@@ -1,4 +1,5 @@
 {
-  "version": "7.4",
-  "origin": "https://www.biozoom.workers.dev"
+  "version": "7.5",
+  "origin": "https://www.biozoom.workers.dev",
+  "headExtra": ""
 }

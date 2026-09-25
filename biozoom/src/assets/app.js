@@ -47,10 +47,45 @@ if(form){
  form.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing&&event.target.matches('input')){event.preventDefault();reviewInquiry();}});
 }
 
-// Restrained scroll reveal for content below the first screen. Above-the-fold content is never hidden,
-// and nothing is hidden when reduced motion is requested or IntersectionObserver is unavailable.
-if('IntersectionObserver' in window&&!matchMedia('(prefers-reduced-motion: reduce)').matches){
- const revealTargets=[...document.querySelectorAll('main section h2,.solution-card,.project-capability,.equipment-card,.service-item,.tech-list-item,.fact-grid article,.faq-list details,.feature-image,.company-photo,.brief-list li,.related-links a')].filter(el=>el.getBoundingClientRect().top>innerHeight);
- const revealObserver=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('is-visible');revealObserver.unobserve(entry.target);}}),{rootMargin:'0px 0px -6% 0px'});
- revealTargets.forEach(el=>{el.classList.add('reveal');revealObserver.observe(el);});
+// Technology index: the row being pointed at or focused chooses the preview image.
+// Without this script the first preview stays in place and every row still links.
+document.querySelectorAll('[data-tech-index]').forEach(index=>{
+ const rows=[...index.querySelectorAll('[data-preview]')];
+ const previews=[...index.querySelectorAll('.tech-index-preview figure')];
+ const show=active=>{rows.forEach((row,i)=>row.classList.toggle('is-active',i===active));previews.forEach((figure,i)=>figure.classList.toggle('is-active',i===active));};
+ rows.forEach((row,i)=>{row.addEventListener('pointerenter',()=>show(i));row.addEventListener('focus',()=>show(i));});
+});
+
+if('IntersectionObserver' in window){
+ // Header: a firmer bar once the page has moved past its top edge.
+ const sentinel=document.createElement('div');
+ sentinel.className='scroll-sentinel';
+ sentinel.setAttribute('aria-hidden','true');
+ document.body.prepend(sentinel);
+ new IntersectionObserver(([entry])=>document.documentElement.classList.toggle('is-scrolled',!entry.isIntersecting)).observe(sentinel);
+
+ // On-page navigation marks the section crossing the upper part of the screen.
+ const anchorLinks=[...document.querySelectorAll('.page-anchor-nav a[href^="#"]')];
+ const anchorTargets=anchorLinks.map(link=>document.getElementById(decodeURIComponent(link.hash.slice(1))));
+ if(anchorLinks.length&&anchorTargets.every(Boolean)){
+  const spy=new IntersectionObserver(entries=>{
+   const current=entries.filter(entry=>entry.isIntersecting).map(entry=>entry.target)[0];
+   if(!current)return;
+   anchorLinks.forEach((link,i)=>{if(anchorTargets[i]===current)link.setAttribute('aria-current','true');else link.removeAttribute('aria-current');});
+   // On narrow screens the bar scrolls sideways: keep the current item in view.
+   const active=anchorLinks[anchorTargets.indexOf(current)];const bar=active.parentElement;
+   if(bar.scrollWidth>bar.clientWidth)bar.scrollTo({left:active.offsetLeft-bar.offsetLeft-20,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+  },{rootMargin:'-30% 0px -65% 0px'});
+  anchorTargets.forEach(target=>spy.observe(target));
+ }
+
+ // Restrained scroll reveal for content below the first screen. Above-the-fold content is never hidden,
+ // and nothing is hidden when reduced motion is requested.
+ if(!matchMedia('(prefers-reduced-motion: reduce)').matches){
+  const below=el=>el.getBoundingClientRect().top>innerHeight;
+  const revealObserver=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('is-visible');revealObserver.unobserve(entry.target);}}),{rootMargin:'0px 0px -6% 0px'});
+  const reveal=(selector,className)=>document.querySelectorAll(selector).forEach(el=>{if(below(el)){el.classList.add(className);revealObserver.observe(el);}});
+  reveal('main section h2:not(.section-index),.solution-card,.scope-item,.equipment-card,.service-item,.tech-list-item,.tech-index-list li,.fact-grid article,.faq-list details,.brief-list li,.related-list li,.process-diagram li','reveal');
+  reveal('.statement-photo img,.feature-image img,.tech-index-preview','reveal-media');
+ }
 }

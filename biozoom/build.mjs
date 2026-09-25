@@ -63,11 +63,21 @@ function publishAsset(file, contents) {
   assetOutput.set(hashed, contents);
 }
 
+// Comments and layout whitespace only: nothing in the stylesheet is space-sensitive
+// around braces and semicolons, and strings are left alone otherwise.
+const minifyCss = css => css
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/\s+/g, ' ')
+  .replace(/\s*([{};])\s*/g, '$1')
+  .replace(/;}/g, '}')
+  .trim() + '\n';
+
 const isCode = file => /\.(css|js)$/.test(file);
 for (const file of assetFiles.filter(file => !isCode(file))) publishAsset(file, await readFile(file));
 for (const file of assetFiles.filter(isCode)) {
-  const text = await readFile(file, 'utf8');
-  publishAsset(file, Buffer.from(rewriteAssetRefs(text, relative(root, file))));
+  let text = rewriteAssetRefs(await readFile(file, 'utf8'), relative(root, file));
+  if (file.endsWith('.css')) text = minifyCss(text);
+  publishAsset(file, Buffer.from(text));
 }
 
 // ---------------------------------------------------------------------------
@@ -145,7 +155,8 @@ for (const file of pageFiles) {
     if (!html.includes(marker)) throw new Error(`${where}: navigation has no ${marker}`);
     html = html.replace(marker, `${marker} class="active" aria-current="page"`);
   }
-  html = rewriteAssetRefs(html, where);
+  // Empty slots leave whitespace-only lines behind; no page relies on them (no <pre>).
+  html = rewriteAssetRefs(html.replace(/^[ \t]+$\n/gm, ''), where);
   for (const match of html.matchAll(/<style>([\s\S]*?)<\/style>/g)) inlineStyles.push(match[1]);
   pages.set(outPath, html);
 }
