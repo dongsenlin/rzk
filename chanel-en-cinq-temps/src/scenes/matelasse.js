@@ -151,6 +151,32 @@
     }
   }
 
+  function stitchLight(ctx, t, c) {
+    const L = Math.hypot(A, B);
+    const dirs = [[A / L, B / L], [A / L, -B / L]];
+    const reach = (Math.hypot(W, H) / c.z) * 0.62 + 2 * L;
+    const step = Math.floor((t - T(12, 1)) / SIXTEENTH + 1e-6);
+    const fade = 1 - P(t, T(13, 1), 0.5);
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 1.5;
+    for (let s = Math.max(0, step - 6); s <= Math.min(step, 19); s++) {
+      const age = t - (T(12, 1) + s * SIXTEENTH);
+      const a = Math.exp(-age / 0.22) * fade * (s % 4 === 0 ? 1 : 0.6);
+      if (a < 0.02) continue;
+      // alternate the two seam families, marching across the frame
+      const d = s % 2;
+      const [dx, dy] = dirs[d];
+      const k = Math.round((s / 19) * 16) - 8;
+      const wx = k * 2 * A;
+      const p0x = W / 2 + (wx - dx * reach + c.ox) * c.z, p0y = H / 2 + (-dy * reach + c.oy) * c.z;
+      const p1x = W / 2 + (wx + dx * reach + c.ox) * c.z, p1y = H / 2 + (dy * reach + c.oy) * c.z;
+      ctx.strokeStyle = `rgba(242,238,230,${0.42 * a})`;
+      K.stitches(ctx, p0x, p0y, p1x, p1y, 1, 9 * c.z, 6.5 * c.z);
+    }
+    ctx.restore();
+  }
+
   // -------------------------------------------------------- the chain --
   // A catenary of alternating flat and edge-on links, dropped on beat 1 of
   // bar 11, landing on beat 2, then a damped swing.
@@ -340,6 +366,10 @@
         }
       }
 
+      // bar 12: every stitch, a beat - one seam lights per sixteenth note,
+      // left to right, in step with the machine in the score
+      if (allDone && t >= T(12, 1) && t < T(13, 1) + 0.5) stitchLight(ctx, t, c);
+
       // the chain, over the lining
       chain(ctx, t);
 
@@ -348,15 +378,15 @@
       const ink = onLining ? C.ivoire : C.noir;
       ctx.fillStyle = ink;
       ctx.globalAlpha = 0.7 * (1 - P(t, T(10, 3), 0.3));
-      K.typeOn(ctx, 'MATELASSÉ  ·  AGNEAU BEIGE', 132, 984, K.MONO, P(t, T(9, 2), 0.5));
+      K.typeOn(ctx, 'MATELASSÉ  ·  AGNEAU BEIGE', 132, 958, K.MONO, P(t, T(9, 2), 0.5));
       ctx.globalAlpha = 1;
       if (t >= T(11, 3)) {
         const deck = { family: 'Bodoni Deck', style: 'italic', size: 70, weight: 400 };
         ctx.fillStyle = C.ivoire;
         ctx.globalAlpha = 1 - P(t, T(13, 1), 0.4);
-        K.riseText(ctx, 'Every stitch, a beat.', 128, 986, deck, P(t, T(11, 3), 0.9), { stagger: 0.4 });
+        K.riseText(ctx, 'Every stitch, a beat.', 128, 958, deck, P(t, T(11, 3), 0.9), { stagger: 0.4 });
         ctx.globalAlpha = 0.7 * (1 - P(t, T(13, 1), 0.4));
-        K.typeOn(ctx, 'DOUBLURE BORDEAUX  ·  CHAÎNE DORÉE  ·  FÉVRIER 1955', W - 132, 986, K.MONO, P(t, T(11, 5), 0.6), { align: 'right' });
+        K.typeOn(ctx, 'DOUBLURE BORDEAUX  ·  CHAÎNE DORÉE  ·  FÉVRIER 1955', W - 132, 958, K.MONO, P(t, T(11, 5), 0.6), { align: 'right' });
         ctx.globalAlpha = 1;
       }
 

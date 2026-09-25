@@ -196,38 +196,4 @@
     ctx.fillRect(-10, -10, W + 20, H + 20);
     ctx.restore();
   };
-
-  // Soft film grain, deterministic per frame; very low amplitude.
-  const grainTiles = [];
-  K.grain = function (F, t, amount = 0.035) {
-    if (!grainTiles.length) {
-      const rnd = K.rng(5);
-      for (let k = 0; k < 6; k++) {
-        const c = document.createElement('canvas');
-        c.width = c.height = 256;
-        const g = c.getContext('2d');
-        const img = g.createImageData(256, 256);
-        for (let i = 0; i < 256 * 256; i++) {
-          const v = (rnd() + rnd() + rnd()) / 3; // soft, near-gaussian
-          const n = Math.round(v * 255);
-          img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = n;
-          img.data[i * 4 + 3] = 255;
-        }
-        g.putImageData(img, 0, 0);
-        grainTiles.push(c);
-      }
-    }
-    const ctx = F.ctx;
-    const tile = grainTiles[Math.floor(t * K.FPS) % grainTiles.length];
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.globalCompositeOperation = 'overlay';
-    ctx.globalAlpha = amount;
-    const pat = ctx.createPattern(tile, 'repeat');
-    const off = (Math.floor(t * K.FPS) * 97) % 256;
-    ctx.translate(-off, -((off * 3) % 256));
-    ctx.fillStyle = pat;
-    ctx.fillRect(0, 0, F.pw + 256, F.ph + 256);
-    ctx.restore();
-  };
 })();

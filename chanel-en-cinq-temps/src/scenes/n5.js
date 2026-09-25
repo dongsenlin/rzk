@@ -519,9 +519,9 @@
         const deck = { family: 'Bodoni Deck', style: 'italic', size: 70, weight: 400 };
         ctx.fillStyle = C.ivoire;
         ctx.globalAlpha = out;
-        K.riseText(ctx, 'She chose the fifth.', 128, 986, deck, P(t, T(27, 3), 0.9), { stagger: 0.4 });
+        K.riseText(ctx, 'She chose the fifth.', 128, 958, deck, P(t, T(27, 3), 0.9), { stagger: 0.4 });
         ctx.globalAlpha = 0.6 * out;
-        K.typeOn(ctx, 'LE CINQUIÈME ÉCHANTILLON  ·  1921', W - 132, 986, K.MONO, P(t, T(27, 4, 0.5), 0.6), { align: 'right' });
+        K.typeOn(ctx, 'LE CINQUIÈME ÉCHANTILLON  ·  1921', W - 132, 958, K.MONO, P(t, T(27, 4, 0.5), 0.6), { align: 'right' });
         ctx.globalAlpha = 1;
       }
     },

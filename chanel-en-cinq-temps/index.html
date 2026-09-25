@@ -4,13 +4,96 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CHANEL — En cinq temps</title>
-<style>html,body{margin:0;background:#000}canvas{display:block;width:100vw;height:auto}</style>
+<meta name="description" content="En cinq temps: an unofficial typographic concept film in five movements, scored in 5/4. Not affiliated with CHANEL.">
+<style>
+  :root {
+    --noir: #070707;
+    --ivoire: #F2EEE6;
+    --dim: rgba(242, 238, 230, 0.5);
+    --faint: rgba(242, 238, 230, 0.16);
+    --mono: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--noir); color: var(--ivoire); overflow: hidden; }
+  body { font: 400 11px/1.4 var(--mono); letter-spacing: 0.14em; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; letter-spacing: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+  #stage { position: fixed; inset: 0 0 86px 0; display: grid; place-items: center; }
+  #film { display: block; background: #000; }
+  html.still #stage { inset: 0; }
+  html.still #ui, html.still #cover { display: none; }
+
+  /* cover */
+  #cover { position: fixed; inset: 0; display: grid; place-items: center; text-align: center;
+    background: radial-gradient(ellipse at center, rgba(7,7,7,0.86), rgba(7,7,7,0.95) 75%); transition: opacity .6s ease; z-index: 5; }
+  #cover.hidden { opacity: 0; pointer-events: none; }
+  #cover .kicker { color: var(--dim); }
+  #cover h1 { margin: 22px 0 30px; font: italic 400 clamp(56px, 9vw, 150px)/1 "Bodoni Display", "Bodoni 72", Didot, serif; letter-spacing: 0; }
+  #cover-play { display: inline-flex; align-items: center; gap: 14px; padding: 16px 26px; border: 1px solid var(--faint); transition: border-color .3s, background .3s; }
+  #cover-play:hover { border-color: var(--ivoire); background: rgba(242,238,230,0.05); }
+  #cover-play i { width: 0; height: 0; border-left: 9px solid var(--ivoire); border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
+  #cover .keys { margin-top: 34px; color: var(--dim); font-size: 10px; line-height: 2; }
+  #cover .legal { position: fixed; bottom: 22px; left: 0; right: 0; color: rgba(242,238,230,0.35); font-size: 10px; }
+
+  /* controls */
+  #ui { position: fixed; left: 0; right: 0; bottom: 0; height: 86px; padding: 26px 28px 0; display: flex; flex-direction: column; justify-content: flex-start; gap: 12px;
+    transition: opacity .5s ease; z-index: 4; }
+  html.idle #ui { opacity: 0; }
+  html.idle, html.idle * { cursor: none; }
+  #bar { position: relative; height: 14px; cursor: pointer; touch-action: none; }
+  #bar::before { content: ""; position: absolute; left: 0; right: 0; top: 6px; height: 1px; background: var(--faint); }
+  #fill { position: absolute; left: 0; top: 6px; height: 1px; background: var(--ivoire); width: 0; }
+  #head { position: absolute; top: 2px; width: 1px; height: 10px; background: var(--ivoire); left: 0; }
+  #ticks i { position: absolute; top: 5px; width: 1px; height: 3px; background: var(--faint); }
+  #chapters .chapter { position: absolute; top: -10px; height: 24px; border-left: 1px solid var(--faint); }
+  #chapters .chapter span { position: absolute; top: -8px; left: 6px; white-space: nowrap; font-size: 9px; color: rgba(242,238,230,0.35); transition: color .3s; }
+  #chapters .chapter.active span { color: var(--ivoire); }
+  #hover { position: absolute; top: -26px; transform: translateX(-50%); font-size: 9px; color: var(--dim); opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #bar:hover #hover { opacity: 1; }
+  #row { display: flex; align-items: center; gap: 22px; white-space: nowrap; }
+  #row .sp { flex: 1; }
+  #row button { color: var(--dim); transition: color .2s; }
+  #row button:hover, #row button.on { color: var(--ivoire); }
+  #play { color: var(--ivoire) !important; min-width: 64px; text-align: left; }
+  #tc { color: var(--ivoire); }
+  #chap, #meter, #status { color: var(--dim); }
+  @media (max-width: 720px) { #meter, #chap { display: none; } #chapters .chapter span { display: none; } }
+</style>
 </head>
 <body>
-<canvas id="film" width="1920" height="1080"></canvas>
+<main id="stage"><canvas id="film" width="960" height="540"></canvas></main>
+
+<section id="cover">
+  <div>
+    <div class="kicker">UN FILM-CONCEPT EN CINQ MOUVEMENTS &nbsp;·&nbsp; 5/4 &nbsp;·&nbsp; 150 BPM &nbsp;·&nbsp; 64 S</div>
+    <h1>En cinq temps</h1>
+    <button id="cover-play"><i></i>LECTURE &nbsp;—&nbsp; SON ACTIVÉ</button>
+    <div class="keys">ESPACE lecture &nbsp;·&nbsp; ← → image &nbsp;·&nbsp; ⇧ ← → temps &nbsp;·&nbsp; ↑ ↓ mesure &nbsp;·&nbsp; 0–6 chapitres<br>G grille &nbsp;·&nbsp; H métadonnées &nbsp;·&nbsp; M son &nbsp;·&nbsp; F plein écran &nbsp;·&nbsp; L boucle</div>
+  </div>
+  <div class="legal">FILM-CONCEPT NON OFFICIEL — NON AFFILIÉ À CHANEL. CHANEL EST UNE MARQUE DE SON PROPRIÉTAIRE.</div>
+</section>
+
+<nav id="ui">
+  <div id="bar"><div id="ticks"></div><div id="chapters"></div><div id="fill"></div><div id="head"></div><div id="hover"></div></div>
+  <div id="row">
+    <button id="play">LECTURE</button>
+    <span id="tc">00:00:00</span>
+    <span id="chap"></span>
+    <span id="meter"></span>
+    <span id="status"></span>
+    <span class="sp"></span>
+    <button id="guides" title="G">GRILLE</button>
+    <button id="loop" title="L">BOUCLE</button>
+    <button id="mute" title="M">SON</button>
+    <button id="fs" title="F">PLEIN ÉCRAN</button>
+  </div>
+</nav>
+
 <script src="src/fonts.js"></script>
 <script src="src/glyphs.js"></script>
 <script src="src/core.js"></script>
+<script src="src/score.js"></script>
+<script src="src/score-audio.js"></script>
 <script src="src/film.js"></script>
 <script src="src/kit.js"></script>
 <script src="src/scenes/prologue.js"></script>
@@ -20,8 +103,6 @@
 <script src="src/scenes/camelia.js"></script>
 <script src="src/scenes/n5.js"></script>
 <script src="src/scenes/finale.js"></script>
-<script>
-  window.FILM_READY = CINQ.loadFonts().then(() => { FILM.render(document.getElementById('film').getContext('2d'), 0); return true; });
-</script>
+<script src="src/player.js"></script>
 </body>
 </html>

@@ -115,8 +115,6 @@
           K.thread(ctx, t, T(1, 2), C.ivoire);
           return;
         }
-        // the plucked thread keeps ringing as the slit opens
-        const ring = t < T(2, 1) + 0.3;
         // title inside the slit
         ctx.save();
         ctx.beginPath();
@@ -133,7 +131,7 @@
         ctx.restore();
         // the two edges of the slit, retracting to the measure of the title
         const retract = E.soie(P(t, T(2, 2), 1.2));
-        const half = lerp(W / 2 + 40, 560, retract) * (1 - 0.0 * close);
+        const half = lerp(W / 2 + 40, 560, retract);
         ctx.strokeStyle = K.rgba(C.ivoire, 0.9);
         ctx.lineWidth = 1.25;
         if (hh <= 1) {
@@ -153,7 +151,6 @@
         ctx.globalAlpha = (1 - close) * clamp(du * 2);
         K.text(ctx, 'UN FILM EN CINQ MOUVEMENTS', CX, CY + hh + 46, deck, { align: 'center' });
         ctx.globalAlpha = 1;
-        if (ring) void 0;
         return;
       }
 

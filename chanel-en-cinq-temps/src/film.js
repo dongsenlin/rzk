@@ -137,22 +137,51 @@
     return c.toDataURL('image/png');
   }
 
+  // How much the picture moves across the shutter: mean luma difference
+  // between the shutter's two ends, measured on a quarter-size render.
+  let probe = null;
+  function motion(t, shutter) {
+    if (!probe) {
+      probe = [0, 1].map(() => {
+        const c = document.createElement('canvas');
+        c.width = W / 4;
+        c.height = H / 4;
+        return c.getContext('2d', { willReadFrequently: true });
+      });
+    }
+    render(probe[0], t, { hud: false });
+    render(probe[1], t + shutter, { hud: false });
+    const a = probe[0].getImageData(0, 0, W / 4, H / 4).data, b = probe[1].getImageData(0, 0, W / 4, H / 4).data;
+    let sum = 0;
+    for (let i = 0; i < a.length; i += 4) sum += Math.abs(a[i] + a[i + 1] + a[i + 2] - b[i] - b[i + 1] - b[i + 2]) / 3;
+    return sum / (a.length / 4);
+  }
+
   // Averaged sub-frames over a shutter interval: true motion blur for export.
+  // opt.samples 'auto' picks the count from the measured motion, so a hold
+  // costs two renders and a dive through a numeral gets thirty-two.
   let acc = null;
   function blurred(canvas, t, opt = {}) {
-    const n = Math.max(1, opt.samples || 1);
+    const shutterDur = (opt.shutter === undefined ? 0.5 : opt.shutter) / K.FPS;
+    let n = opt.samples;
+    if (n === 'auto' || n === undefined) {
+      const d = motion(t, shutterDur);
+      n = d < 0.08 ? 1 : d < 0.6 ? 4 : d < 2 ? 8 : d < 6 ? 16 : 32;
+    }
+    n = Math.max(1, n);
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (n === 1) {
       render(ctx, t, opt);
-      return;
+      return n;
     }
-    const shutter = (opt.shutter === undefined ? 0.5 : opt.shutter) / K.FPS;
+    const shutter = shutterDur;
     const len = canvas.width * canvas.height * 4;
     if (!acc || acc.length !== len) acc = new Float32Array(len);
     acc.fill(0);
     for (let i = 0; i < n; i++) {
-      // centred shutter, stratified samples
-      const ts = t + ((i + 0.5) / n - 0.5) * shutter;
+      // The shutter opens on the frame, as a film camera's does: a cut on a
+      // frame boundary (every beat is one) never bleeds into the frame before.
+      const ts = t + ((i + 0.5) / n) * shutter;
       render(ctx, ts, opt);
       const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
       for (let j = 0; j < len; j++) acc[j] += d[j];
@@ -162,6 +191,39 @@
     const inv = 1 / n;
     for (let j = 0; j < len; j++) o[j] = acc[j] * inv + 0.5;
     ctx.putImageData(img, 0, 0);
+    return n;
+  }
+
+  // Post grain for export: a whisper of luminance noise that dithers the
+  // gradients through 8-bit H.264. Applied after the motion-blur average.
+  const grainCache = [];
+  function grainPost(canvas, t, amount = 0.02) {
+    const g = canvas.getContext('2d');
+    if (!grainCache.length) {
+      const rnd = K.rng(25);
+      for (let k = 0; k < 8; k++) {
+        const c = document.createElement('canvas');
+        c.width = c.height = 512;
+        const cg = c.getContext('2d');
+        const img = cg.createImageData(512, 512);
+        for (let i = 0; i < 512 * 512; i++) {
+          const v = Math.round(((rnd() + rnd() + rnd() + rnd()) / 4) * 255);
+          img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = v;
+          img.data[i * 4 + 3] = 255;
+        }
+        cg.putImageData(img, 0, 0);
+        grainCache.push(c);
+      }
+    }
+    const fr = Math.floor(t * K.FPS + 1e-6);
+    g.save();
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = 'overlay';
+    g.globalAlpha = amount;
+    g.fillStyle = g.createPattern(grainCache[fr % grainCache.length], 'repeat');
+    g.translate(-((fr * 173) % 512), -((fr * 311) % 512));
+    g.fillRect(0, 0, canvas.width + 512, canvas.height + 512);
+    g.restore();
   }
 
   function sheet(times, opt = {}) {
@@ -194,7 +256,7 @@
   }
 
   window.FILM = {
-    scenes, order, render, still, blurred, sheet, drawScene, sceneAt, timecode,
+    scenes, order, render, still, blurred, grainPost, sheet, drawScene, sceneAt, timecode,
     get duration() { return DURATION; },
     sections: () => order.map((s) => ({ id: s.id, label: s.label, start: s.start, end: s.end })),
   };
