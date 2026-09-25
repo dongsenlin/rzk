@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CHANEL — En cinq temps</title>
+<style>html,body{margin:0;background:#000}canvas{display:block;width:100vw;height:auto}</style>
+</head>
+<body>
+<canvas id="film" width="1920" height="1080"></canvas>
+<script src="src/fonts.js"></script>
+<script src="src/glyphs.js"></script>
+<script src="src/core.js"></script>
+<script src="src/film.js"></script>
+<script src="src/kit.js"></script>
+<script src="src/scenes/prologue.js"></script>
+<script src="src/scenes/noir.js"></script>
+<script src="src/scenes/matelasse.js"></script>
+<script src="src/scenes/cambon.js"></script>
+<script src="src/scenes/camelia.js"></script>
+<script src="src/scenes/n5.js"></script>
+<script src="src/scenes/finale.js"></script>
+<script>
+  window.FILM_READY = CINQ.loadFonts().then(() => { FILM.render(document.getElementById('film').getContext('2d'), 0); return true; });
+</script>
+</body>
+</html>
