@@ -189,7 +189,7 @@ console.log(`built ${pages.size} pages and ${assetOutput.size} assets (${(bytes 
 if (process.argv.includes('--zip')) {
   const zip = join(root, `BIOZOOM-v${site.version}-cloudflare-static.zip`);
   if (existsSync(zip)) await rm(zip);
-  // -X drops extra file attributes; -D omits directory entries.
-  execFileSync('zip', ['-q', '-r', '-X', '-D', zip, '.'], { cwd: dist });
+  // Same layout as the v7.4 bundle: files at the root, with directory entries.
+  execFileSync('zip', ['-q', '-r', '-X', zip, '.'], { cwd: dist });
   console.log(`packaged ${relative(process.cwd(), zip)}`);
 }
