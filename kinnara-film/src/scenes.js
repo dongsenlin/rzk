@@ -258,15 +258,20 @@ function shTrials(t) {
 }
 
 // ── props for her rooms ──
-function lantern(c, e, x, y, s, t, seed, blur = 0) {
-  c.save(); if (blur) c.filter = `blur(${blur}px)`; c.translate(x, y + Math.sin(t * 1.3 + seed) * 4 * s); c.rotate(Math.sin(t * 0.9 + seed) * 0.04); c.scale(s, s);
+const LANT = {};
+function lanternSprite(blur) {                                // the lantern painted once per blur level (canvas blur per frame is slow)
+  if (LANT[blur]) return LANT[blur];
+  const cv = mk(240, 400), c = cv.getContext('2d'); c.translate(120, 190); if (blur) c.filter = `blur(${blur}px)`;
   c.strokeStyle = '#3A2410'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, -140); c.lineTo(0, -70); c.stroke();
   const g = c.createRadialGradient(-14, -10, 6, 0, 0, 70); g.addColorStop(0, '#FF8A5A'); g.addColorStop(0.6, '#C8342C'); g.addColorStop(1, '#6E1715');
   c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, 56, 70, 0, 0, TAU); c.fill();
   c.strokeStyle = 'rgba(80,20,10,0.5)'; c.lineWidth = 2; for (let k = -2; k <= 2; k++) { c.beginPath(); c.ellipse(0, 0, Math.abs(k) * 12 + 2, 70, 0, 0, TAU); c.stroke(); }
   c.fillStyle = '#C9A45E'; c.fillRect(-26, -76, 52, 10); c.fillRect(-26, 66, 52, 10);
-  c.strokeStyle = '#C8342C'; c.lineWidth = 2; for (let k = -3; k <= 3; k++) { c.beginPath(); c.moveTo(k * 4, 76); c.lineTo(k * 5, 120 + Math.sin(t * 2 + k) * 3); c.stroke(); }
-  c.restore();
+  c.strokeStyle = '#C8342C'; c.lineWidth = 2; for (let k = -3; k <= 3; k++) { c.beginPath(); c.moveTo(k * 4, 76); c.lineTo(k * 5, 120 + Math.sin(k) * 3); c.stroke(); }
+  return (LANT[blur] = cv);
+}
+function lantern(c, e, x, y, s, t, seed, blur = 0) {
+  c.save(); c.translate(x, y + Math.sin(t * 1.3 + seed) * 4 * s); c.rotate(Math.sin(t * 0.9 + seed) * 0.04); c.scale(s, s); c.drawImage(lanternSprite(blur), -120, -190); c.restore();
   glowDot(e, x, y, 150 * s, 'rgba(255,120,60,A)', 0.55); glowDot(e, x, y, 40 * s, 'rgba(255,210,150,A)', 0.8);
 }
 function gauze(c, x0, x1, y0, y1, t, seed, col = 'rgba(180,40,36,0.42)') {
@@ -277,14 +282,17 @@ function gauze(c, x0, x1, y0, y1, t, seed, col = 'rgba(180,40,36,0.42)') {
   for (let k = 1; k < 8; k++) { const x = lerp(x0, x1, k / 8); c.beginPath(); c.moveTo(x, y0); c.quadraticCurveTo(x + Math.sin(t * 0.8 + k + seed) * 20, (y0 + y1) / 2, x + Math.sin(t * 0.8 + k * 1.3 + seed) * 18, y1); c.stroke(); }
   c.restore();
 }
+let ONLOOK = null;
 function onlookers(c, a, t, K) {                          // dark, blurred heads at the edge of the frame, all turned to her
   if (a <= 0) return;
-  c.save(); c.globalAlpha = a * 0.9; c.filter = `blur(${8 * K.z / (H / 1400)}px)`; c.fillStyle = '#120C0A';
+  if (!ONLOOK) {
+    ONLOOK = mk(420, 440); const o = ONLOOK.getContext('2d'); o.translate(210, 250); o.filter = 'blur(9px)'; o.fillStyle = '#120C0A';
+    o.beginPath(); o.ellipse(0, -150, 62, 74, 0, 0, TAU); o.fill();
+    o.beginPath(); o.moveTo(-160, 120); o.bezierCurveTo(-140, -20, -80, -70, 0, -76); o.bezierCurveTo(80, -70, 140, -20, 160, 120); o.lineTo(160, 180); o.lineTo(-160, 180); o.closePath(); o.fill();
+  }
+  c.save(); c.globalAlpha = a * 0.9;
   for (const [x, y, s, f] of [[140, 1330, 1.3, 1], [330, 1420, 1.1, 1], [1260, 1330, 1.25, -1], [1080, 1440, 1.0, -1]]) {
-    c.save(); c.translate(x, y + Math.sin(t + x) * 6); c.scale(s * f, s);
-    c.beginPath(); c.ellipse(0, -150, 62, 74, 0, 0, TAU); c.fill();
-    c.beginPath(); c.moveTo(-160, 120); c.bezierCurveTo(-140, -20, -80, -70, 0, -76); c.bezierCurveTo(80, -70, 140, -20, 160, 120); c.closePath(); c.fill();
-    c.restore();
+    c.save(); c.translate(x, y + Math.sin(t + x) * 6); c.scale(s * f, s); c.drawImage(ONLOOK, -210, -250); c.restore();
   }
   c.restore();
 }
@@ -434,11 +442,17 @@ function shVow(t) {
 }
 
 // ── act three props ──
-function bars(c, x0, x1, y0, y1, n, blur, col = '#1A100C') {
-  c.save(); if (blur) c.filter = `blur(${blur}px)`; c.fillStyle = col;
-  for (let i = 0; i < n; i++) { const x = lerp(x0, x1, (i + 0.5) / n); c.fillRect(x - 22, y0, 44, y1 - y0); }
-  c.fillRect(x0 - 40, y0 + (y1 - y0) * 0.12, x1 - x0 + 80, 36); c.fillRect(x0 - 40, y1 - (y1 - y0) * 0.12, x1 - x0 + 80, 36);
-  c.restore();
+const BARS = {};
+function bars(c, x0, x1, y0, y1, n, blur, col = '#1A100C') {   // painted once into a sprite, then placed
+  const key = [x0, x1, y0, y1, n, blur, col].join(), m = 80;
+  if (!BARS[key]) {
+    const cv = mk(Math.ceil(x1 - x0 + 2 * m), Math.ceil(y1 - y0 + 2 * m)), b = cv.getContext('2d'); b.translate(m - x0, m - y0);
+    if (blur) b.filter = `blur(${blur}px)`; b.fillStyle = col;
+    for (let i = 0; i < n; i++) { const x = lerp(x0, x1, (i + 0.5) / n); b.fillRect(x - 22, y0, 44, y1 - y0); }
+    b.fillRect(x0 - 40, y0 + (y1 - y0) * 0.12, x1 - x0 + 80, 36); b.fillRect(x0 - 40, y1 - (y1 - y0) * 0.12, x1 - x0 + 80, 36);
+    BARS[key] = cv;
+  }
+  c.drawImage(BARS[key], x0 - m, y0 - m);
 }
 function chain(c, pts, t, a = 1, drop = 0) {             // links along a polyline; drop > 0 makes them fall
   if (a <= 0) return;
@@ -790,8 +804,11 @@ function shVerdict(t) {
 }
 // 19 · 魔罗 — a vast shadow rises behind him; the last of the white goes black (L14)
 const MARA = [];
-function maraShade(red) {                                     // his silhouette filled flat: 0 smoke-black, 1 ember red (for the rim glow)
-  if (!MARA[red]) { const cv = mk(1400, 1400), t = cv.getContext('2d'); drawKin(t, -0.1, 1); t.globalCompositeOperation = 'source-in'; t.fillStyle = red ? '#A0200E' : '#140807'; t.fillRect(0, 0, 1400, 1400); MARA[red] = cv; }
+function maraShade(red) {                                     // his silhouette filled flat and softened: 0 smoke-black, 1 ember red (the rim glow)
+  if (!MARA[red]) {
+    const cv = mk(1400, 1400), t = cv.getContext('2d'); drawKin(t, -0.1, 1); t.globalCompositeOperation = 'source-in'; t.fillStyle = red ? '#A0200E' : '#140807'; t.fillRect(0, 0, 1400, 1400);
+    const out = mk(1400, 1400), o = out.getContext('2d'); o.filter = `blur(${red ? 12.5 : 3.5}px)`; o.drawImage(cv, 0, 0); MARA[red] = out;
+  }
   return MARA[red];
 }
 function shMara(t) {
@@ -803,8 +820,8 @@ function shMara(t) {
       inkOver(c, K, '#08080C', 0.92);
       // 魔罗: his own shape, vast, a smoke-black silhouette with a red rim, ember eyes
       const my = lerp(1650, 740, rise);
-      c.save(); c.globalAlpha = 0.7 * rise; c.filter = 'blur(30px)'; c.translate(760, my); c.scale(2.42, 2.42); c.translate(-700, -700); c.drawImage(maraShade(1), 0, 0); c.restore();
-      c.save(); c.globalAlpha = 0.96 * rise; c.filter = 'blur(8px)'; c.translate(760, my); c.scale(2.3, 2.3); c.translate(-700, -700); c.drawImage(maraShade(0), 0, 0); c.restore();
+      c.save(); c.globalAlpha = 0.7 * rise; c.translate(760, my); c.scale(2.42, 2.42); c.translate(-700, -700); c.drawImage(maraShade(1), 0, 0); c.restore();
+      c.save(); c.globalAlpha = 0.96 * rise; c.translate(760, my); c.scale(2.3, 2.3); c.translate(-700, -700); c.drawImage(maraShade(0), 0, 0); c.restore();
       if (rise > 0.5) { const [ex, ey] = kinEye(-0.1); const X = 760 + (ex - 700) * 2.3, Y = my + (ey - 700) * 2.3, a = (rise - 0.5) * 2; glowDot(e, X, Y, 150, 'rgba(255,40,20,A)', a * 0.8); c.fillStyle = `rgba(255,90,50,${a})`; c.beginPath(); c.ellipse(X, Y, 16, 7, -0.1, 0, TAU); c.fill(); }
       darkMandorla(c, e, 780, 720, t, 0.9);
       c.save(); c.translate(0, 100); kinFigure(c, -0.1, 1); c.restore();
