@@ -318,9 +318,9 @@ const CPU = (() => {
           g += GLOW[a0 + 1] * w0 + GLOW[a1 + 1] * w1 + GLOW[a2 + 1] * w2 + GLOW[a3 + 1] * w3;
           b += GLOW[a0 + 2] * w0 + GLOW[a1 + 2] * w1 + GLOW[a2 + 2] * w2 + GLOW[a3 + 2] * w3;
         }
-        if (fl > 0) { r += (fc[0] - r) * fl; g += (fc[1] - g) * fl; b += (fc[2] - b) * fl; }
         if (vig > 0) { const v = VIG[i]; r *= 1 - vig * (1 - v) * (1 - vc[0]); g *= 1 - vig * (1 - v) * (1 - vc[1]); b *= 1 - vig * (1 - v) * (1 - vc[2]); }
         let R = TO[Math.min(4096, Math.max(0, r * 4096) | 0)], G = TO[Math.min(4096, Math.max(0, g * 4096) | 0)], B = TO[Math.min(4096, Math.max(0, b * 4096) | 0)];
+        if (fl > 0) { R += (fc[0] * 255 - R) * fl; G += (fc[1] * 255 - G) * fl; B += (fc[2] * 255 - B) * fl; }
         const Lm = (R * 0.299 + G * 0.587 + B * 0.114) / 255;
         const n = NOISE[nrow + ((x + ox) & (NT - 1))] * gr * (0.35 + 1.98 * (1 - Lm) * Lm) + NOISE[nrow2 + ((x * 3 + ox + 5) & (NT - 1))] * 0.5 + lift;
         const o = i * 4;
@@ -333,6 +333,7 @@ const CPU = (() => {
 })();
 
 // ───────────── frame loop ─────────────
+function hexSrgb(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; }
 function hexLin(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255].map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)); }
 const outCv = document.getElementById('out'); outCv.width = RW; outCv.height = RH;
 const octx = outCv.getContext('2d');
@@ -348,7 +349,7 @@ function renderAt(tCenter, samples) {
   const f = fxAt(tCenter);
   return CPU.finish({
     seed: FRAME % 997 + 1, ca: f.ca || 0, vig: f.vig ?? 0.35, grain: f.grain ?? 0.035, bloom: f.bloom ?? 1,
-    flash: f.flash || 0, flashCol: hexLin(f.flashCol || '#ffffff'), vigCol: hexLin(f.vigCol || '#000000'),
+    flash: f.flash || 0, flashCol: hexSrgb(f.flashCol || '#ffffff'), vigCol: hexLin(f.vigCol || '#000000'),
     sharpE: f.sharpE ?? 0.25, exposure: f.exposure ?? 1, lift: f.lift || 0,
   });
 }
