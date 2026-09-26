@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>渡 · 紧那罗与阿羞</title>
+<link rel="stylesheet" href="../assets/fontsrc/ma-shan-zheng/400.css">
+<link rel="stylesheet" href="../assets/fontsrc/zhi-mang-xing/400.css">
+<link rel="stylesheet" href="../assets/fontsrc/liu-jian-mao-cao/400.css">
+<link rel="stylesheet" href="../assets/fontsrc/noto-serif-sc/400.css">
+<link rel="stylesheet" href="../assets/fontsrc/noto-serif-sc/600.css">
+<style>
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  canvas#out { display: block; width: 100vw; height: auto; max-height: 100vh; object-fit: contain; }
+</style>
+</head>
+<body>
+<canvas id="out"></canvas>
+<script src="engine.js"></script>
+<script src="kit.js"></script>
+<script src="mural.js"></script>
+<script src="figures.js"></script>
+<script src="heroine.js"></script>
+<script src="lib.js"></script>
+<script src="scenes.js"></script>
+<script>
+  window.READY = (async () => {
+    // every glyph the film uses, so all unicode-range subsets are loaded before frame 0
+    const text = (window.ALL_TEXT || '') + '0123456789 ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz·—|（）《》，。：';
+    const faces = ['400 60px "Ma Shan Zheng"', '400 60px "Zhi Mang Xing"', '400 60px "Liu Jian Mao Cao"', '400 40px "Noto Serif SC"', '600 40px "Noto Serif SC"'];
+    await Promise.all(faces.map(f => document.fonts.load(f, text)));
+    await document.fonts.ready;
+    if (window.PREPARE) await window.PREPARE();          // textures and cached figure paintings
+    return true;
+  })();
+</script>
+</body>
+</html>
