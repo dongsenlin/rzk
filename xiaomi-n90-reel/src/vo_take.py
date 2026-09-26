@@ -17,11 +17,11 @@ API = 'https://generativelanguage.googleapis.com/v1beta'
 
 # The TTS model speaks any plain instruction; direction must be an audio profile + director's notes + TRANSCRIPT.
 PROMPT = """# AUDIO PROFILE
-A young mainland-Chinese male voice-over artist, late twenties: warm, magnetic and bright, confident, with a sense of open-road freedom and a gentle warmth for family. Never shouting, never salesy.
+A young mainland-Chinese female voice-over artist in her twenties: sweet, bright and warm, with a smile in her voice; lively and confident, like a friend inviting you on a road trip. Never childish, never salesy, never robotic.
 ## THE SCENE
 A fast, cinematic 15-second launch film for Xiaomi SkyNomad N90 Max, a large seven-seat range-extended SUV — family road trips, mountains, lakes and starry campsites — cut to an energetic 128 BPM electronic-cinematic track.
 ### DIRECTOR'S NOTES
-Style: a smile in the voice, inspiring; every line lands like a headline; lift the numbers (一千七百零五公里, 十一种空间). The last line is the signature: confident, with warm pride.
+Style: sweet and uplifting; every line lands like a headline; lightly lift the numbers (一千七百零五公里, 十一种空间); 说走就走 sounds playful and free; the last line is the signature — warm and proud, with a smile.
 Pace: brisk; leave a clear pause of about one second between lines.
 Accent: standard Putonghua.
 #### TRANSCRIPT
