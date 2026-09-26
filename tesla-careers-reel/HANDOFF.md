@@ -48,9 +48,9 @@ HUD in the corners (特斯拉 · 工作机会 / 上海 coordinates / chapter / t
 - [x] toolchain, fonts, models; design tokens researched
 - [x] VO generated and aligned (`python3 src/vo_offline.py && python3 src/vo_align.py`)
 - [x] engine; shots 1–3 (line → Model Y blueprint → launch) drawn and look good in stills
-- [ ] engine was just switched from WebGL (too slow under SwiftShader, ~2.3 s/frame) to the CPU
-      compositor + raw-RGBA POST; `render.js` still uses screenshots and must be updated to serve
-      the folder over a local HTTP server and receive `POST /frame/...` (`window.renderSend`)
+- [x] engine switched from WebGL (too slow under SwiftShader) to the CPU compositor; `render.js`
+      serves the folder over a local HTTP server and receives raw RGBA via `POST /frame/...`.
+      Measured ≈2 s/frame at 7 motion-blur samples per worker → use `--workers 4` for the full render.
 - [ ] shots 4–9 (energy, AI, robotics, roles slot, you, end card) — currently stubs in scenes.js
 - [ ] car polish: pitch only the body during the squat (wheels must stay on the ground); sill should draw from both arches inward; slightly rounder nose / higher hood
 - [ ] `src/audio.py` (music, SFX list below, mix, loudness ≈ -14 LUFS, true peak ≤ -1 dBTP)
