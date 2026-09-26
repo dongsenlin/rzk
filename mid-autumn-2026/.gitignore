@@ -1,0 +1,4 @@
+frames/
+out/stills/
+*.tmp
+__pycache__/
