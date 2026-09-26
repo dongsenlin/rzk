@@ -67,3 +67,18 @@ HUD in the corners (特斯拉 · 工作机会 / 上海 coordinates / chapter / t
 - No ffmpeg binary: use `python3 -c "import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())"`.
 - Playwright: `PLAYWRIGHT=/opt/node22/lib/node_modules/playwright node src/render.js ...`
 - tesla.cn, Hugging Face, jsdelivr are blocked; GitHub releases, raw.githubusercontent, PyPI, npm, Google Fonts work.
+
+## 本地运行（Windows / macOS / Linux）
+1. 获取代码（三选一）
+   - 已有仓库：`git fetch origin` → `git checkout claude/youthful-albattani-tc2nsl`
+     （这是远端分支，fetch 之前本地 `git branch` 看不到它；`git branch -r` 可见 `origin/claude/youthful-albattani-tc2nsl`）
+   - 新克隆：`git clone -b claude/youthful-albattani-tc2nsl https://github.com/dongsenlin/rzk.git`
+   - 直接下载 ZIP：https://github.com/dongsenlin/rzk/archive/refs/heads/claude/youthful-albattani-tc2nsl.zip
+2. 依赖：Node 18+、Python 3.10+、ffmpeg（或 `pip install imageio-ffmpeg`）
+   - `cd tesla-careers-reel && npm init -y && npm i playwright && npx playwright install chromium`
+   - `bash setup.sh`（Windows 用 Git Bash 或 WSL；会下载字体和配音/识别模型到 assets/）
+3. 生成
+   - 配音：`python src/vo_offline.py && python src/vo_align.py`（或设置 GEMINI_API_KEY 后 `python src/vo_gemini.py && python src/vo_align.py`）
+   - 音乐音效混音：`python src/audio.py` → build/audio.wav
+   - 画面：`node src/render.js --workers 4` → build/video.mp4，并自动合成音频到 out/tesla_careers_reel_15s.mp4
+   - 预览：`node src/render.js --sheet 0.5 --scale 0.5 --samples 1`（联系表）或 `--stills 3.9,6.9`
