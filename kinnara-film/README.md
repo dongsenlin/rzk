@@ -78,6 +78,7 @@
 - 旁白一出现，配乐自动压低约 14 dB，音效压低约 6 dB。
 - 歌曲放在 78.37 秒，不剪不改，只调音量；歌尾接一段混响尾音。
 - 整体 −14 LUFS，真峰值 −1 dBTP。
+- 另写一份交付用的 `build/audio_lossy.wav`：响度相同，15 kHz 以上滤掉，峰值压到 −2.8 dBTP。这样压成 AAC 128k 之后，真峰值还在 −1 dBTP 以下（实测 −1.75）。
 
 ## 生成
 ```
@@ -92,6 +93,9 @@ python3 src/tex.py          # 纹理 → build/tex/
 python3 src/audio.py        # 声音 → build/audio.wav
 REEL_NAME=du_film PLAYWRIGHT=/opt/node22/lib/node_modules/playwright node src/render.js --workers 4 --aspect h   # 16:9 → out/du_film_h_master.mp4
 REEL_NAME=du_film PLAYWRIGHT=/opt/node22/lib/node_modules/playwright node src/render.js --workers 4 --aspect v   # 9:16
+# 4. 交付压缩（每个文件 < 30 MiB）：视频两遍编码 1.72 Mbps，音频用 audio_lossy.wav 压 AAC 128k
+ffmpeg -i out/du_film_h_master.mp4 -an -c:v libx264 -preset slow -tune film -b:v 1720k -maxrate 4000k -bufsize 8000k -pass 1 -f mp4 /dev/null
+ffmpeg -i out/du_film_h_master.mp4 -i build/audio_lossy.wav -map 0:v -map 1:a -c:v libx264 -preset slow -tune film -b:v 1720k -maxrate 4000k -bufsize 8000k -pass 2 -c:a aac -b:a 128k -movflags +faststart out/du_film_16x9.mp4
 node src/render.js --stills 31.5,79.6 [--aspect v]              # 单帧检查 → build/stills/
 node src/render.js --stills 0 --lab ax_white_smile:face         # 单独看人物：ax_red_cool / ax_red_tear / ax_white_closed / ax_white_smile / ax_white_tear（:face 看脸），kin:<0–1 墨>，lamp
 ```
