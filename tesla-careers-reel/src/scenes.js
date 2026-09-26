@@ -783,10 +783,10 @@ const DARK = '#1C1F25', DARK2 = '#2C3038', SEAM = 'rgba(120,128,140,0.55)';
 function drawArm(c, s, th, te, a) {
   c.save(); c.globalAlpha *= a;
   c.rotate(th);
-  capsule(c, 0, 8, 0, 108, 50, 44); c.fillStyle = whitePanel(c, -25, 25); c.fill(); c.strokeStyle = SEAM; c.lineWidth = 1; c.stroke();
+  capsule(c, 0, 8, 0, 106, 44, 38); c.fillStyle = whitePanel(c, -22, 22); c.fill(); c.strokeStyle = SEAM; c.lineWidth = 1; c.stroke();
   c.fillStyle = DARK; c.beginPath(); c.arc(0, 118, 21, 0, TAU); c.fill();
   c.translate(0, 118); c.rotate(te);
-  capsule(c, 0, 12, 0, 100, 44, 36); c.fillStyle = whitePanel(c, -22, 22); c.fill(); c.stroke();
+  capsule(c, 0, 12, 0, 100, 38, 30); c.fillStyle = whitePanel(c, -19, 19); c.fill(); c.stroke();
   c.fillStyle = DARK; c.beginPath(); c.arc(0, 108, 12, 0, TAU); c.fill();
   c.beginPath(); rrect(c, -17, 112, 34, 60, 9); c.fill();
   c.strokeStyle = 'rgba(255,255,255,0.18)'; c.lineWidth = 1.2; c.beginPath();
@@ -797,7 +797,7 @@ function drawRobot(t, u) {
   const c = L.c, e = L.e;
   const X = 1190, Y = 905;
   const part = (d, dx, dy) => { const p = spring(u - d, 3.3, 0.55), a = clamp((u - d) * 7); return { dx: dx * (1 - p), dy: dy * (1 - p), a }; };
-  const legs = part(0.0, 0, 150), torso = part(0.117, 0, -190), arms = part(0.234, 1, 0), head = part(0.352, 0, -260);
+  const legs = part(-0.2, 0, 150), torso = part(-0.083, 0, -190), arms = part(0.034, 1, 0), head = part(0.152, 0, -260);
   c.save(); c.translate(X, Y);
   // floor shadow
   const sg = c.createRadialGradient(0, 0, 10, 0, 0, 190); sg.addColorStop(0, `rgba(23,26,32,${0.22 * legs.a})`); sg.addColorStop(1, 'rgba(23,26,32,0)');
@@ -806,12 +806,14 @@ function drawRobot(t, u) {
   if (legs.a > 0) {
     c.save(); c.globalAlpha = legs.a; c.translate(legs.dx, legs.dy);
     for (const s of [-1, 1]) {
-      c.fillStyle = DARK; c.beginPath(); rrect(c, s * 58 - 36, -34, 72, 34, 12); c.fill();
-      c.fillStyle = DARK2; c.beginPath(); c.arc(s * 58, -44, 17, 0, TAU); c.fill();
-      capsule(c, s * 57, -192, s * 58, -52, 58, 44); c.fillStyle = whitePanel(c, s * 57 - 29, s * 57 + 29); c.fill(); c.strokeStyle = SEAM; c.lineWidth = 1; c.stroke();
-      c.fillStyle = DARK; c.beginPath(); c.arc(s * 57, -200, 27, 0, TAU); c.fill();
-      capsule(c, s * 50, -372, s * 56, -214, 76, 62); c.fillStyle = whitePanel(c, s * 53 - 38, s * 53 + 38); c.fill(); c.stroke();
-      c.beginPath(); c.moveTo(s * 40, -330); c.lineTo(s * 44, -250); c.strokeStyle = SEAM; c.stroke();
+      c.fillStyle = DARK; c.beginPath(); c.moveTo(s * 58 - 30, 0); c.lineTo(s * 58 + 30, 0); c.quadraticCurveTo(s * 58 + 34, -26, s * 58 + 14, -34); c.lineTo(s * 58 - 14, -34); c.quadraticCurveTo(s * 58 - 34, -26, s * 58 - 30, 0); c.fill();
+      c.fillStyle = DARK2; c.beginPath(); c.arc(s * 58, -44, 14, 0, TAU); c.fill();
+      capsule(c, s * 57, -178, s * 58, -56, 50, 34); c.fillStyle = whitePanel(c, s * 57 - 25, s * 57 + 25); c.fill(); c.strokeStyle = SEAM; c.lineWidth = 1; c.stroke();
+      c.beginPath(); c.moveTo(s * 50, -160); c.quadraticCurveTo(s * 60, -120, s * 56, -80); c.strokeStyle = SEAM; c.stroke();
+      c.fillStyle = DARK; c.beginPath(); c.arc(s * 56, -200, 22, 0, TAU); c.fill();
+      c.fillStyle = DARK2; c.beginPath(); rrect(c, s * 56 - 12, -212, 24, 24, 6); c.fill();
+      capsule(c, s * 50, -370, s * 55, -226, 70, 50); c.fillStyle = whitePanel(c, s * 52 - 35, s * 52 + 35); c.fill(); c.strokeStyle = SEAM; c.stroke();
+      c.beginPath(); c.moveTo(s * 36, -335); c.quadraticCurveTo(s * 44, -290, s * 42, -250); c.strokeStyle = SEAM; c.stroke();
     }
     c.restore();
   }
@@ -821,7 +823,7 @@ function drawRobot(t, u) {
     c.fillStyle = DARK; c.beginPath(); rrect(c, -58, -476, 116, 80, 14); c.fill();
     c.strokeStyle = 'rgba(255,255,255,0.12)'; c.lineWidth = 2; c.beginPath(); for (const x of [-30, -10, 10, 30]) { c.moveTo(x, -466); c.lineTo(x, -410); } c.stroke();
     c.beginPath(); rrect(c, -88, -414, 176, 66, 22); c.fillStyle = whitePanel(c, -88, 88); c.fill(); c.strokeStyle = SEAM; c.lineWidth = 1; c.stroke();
-    c.fillStyle = DARK; for (const s of [-1, 1]) { c.beginPath(); c.arc(s * 52, -372, 15, 0, TAU); c.fill(); }
+    c.strokeStyle = SEAM; c.beginPath(); c.moveTo(-40, -414); c.quadraticCurveTo(0, -360, 40, -414); c.stroke();
     c.beginPath(); c.moveTo(-98, -588); c.quadraticCurveTo(0, -604, 98, -588); c.lineTo(80, -500); c.quadraticCurveTo(66, -466, 0, -462); c.quadraticCurveTo(-66, -466, -80, -500); c.closePath();
     c.fillStyle = whitePanel(c, -100, 100); c.fill(); c.stroke();
     c.beginPath(); c.moveTo(0, -596); c.lineTo(0, -470); c.moveTo(-60, -520); c.quadraticCurveTo(0, -505, 60, -520); c.strokeStyle = SEAM; c.stroke();
@@ -832,7 +834,7 @@ function drawRobot(t, u) {
     const raise = E.inOutCubic(inv(0.62, 0.92, u));
     const wave = 0.34 * Math.sin((u - 0.92) * TAU * 2.3) * env(u, 0.9, 1.0, 1.6, 1.8);
     for (const s of [-1, 1]) {
-      c.save(); c.translate(s * 116 + s * 220 * (1 - spring(u - 0.234, 3.3, 0.55)), -552);
+      c.save(); c.translate(s * 116 + s * 220 * (1 - spring(u - 0.034, 3.3, 0.55)), -552);
       const th = s < 0 ? lerp(0.07, 2.35, raise) : -0.07, te = s < 0 ? lerp(0.05, 0.72, raise) + wave : -0.05;
       drawArm(c, s, th, te, arms.a);
       c.globalAlpha = arms.a; c.beginPath(); c.ellipse(0, -4, 42, 38, 0, 0, TAU); c.fillStyle = whitePanel(c, -42, 42); c.fill(); c.strokeStyle = SEAM; c.lineWidth = 1; c.stroke();
@@ -842,7 +844,7 @@ function drawRobot(t, u) {
   // head
   if (head.a > 0) {
     c.save(); c.globalAlpha = head.a; c.translate(head.dx, head.dy);
-    c.fillStyle = DARK; c.fillRect(-17, -616, 34, 40);
+    c.fillStyle = DARK; c.beginPath(); c.moveTo(-14, -612); c.lineTo(14, -612); c.lineTo(20, -586); c.lineTo(-20, -586); c.closePath(); c.fill();
     c.beginPath(); c.ellipse(0, -664, 50, 60, 0, 0, TAU); c.fillStyle = whitePanel(c, -50, 50); c.fill(); c.strokeStyle = SEAM; c.lineWidth = 1; c.stroke();
     const face = (ctx) => { ctx.beginPath(); ctx.moveTo(-40, -674); ctx.quadraticCurveTo(0, -690, 40, -674); ctx.lineTo(38, -640); ctx.quadraticCurveTo(30, -610, 0, -606); ctx.quadraticCurveTo(-30, -610, -38, -640); ctx.closePath(); };
     face(c); const fg = c.createLinearGradient(0, -690, 0, -606); fg.addColorStop(0, '#2B3038'); fg.addColorStop(1, '#0D0F12'); c.fillStyle = fg; c.fill();
@@ -899,7 +901,7 @@ function slotPos(t) {
   if (t >= land0) pos = 11 + E.inOutCubic(inv(land0, T.you, t));
   return pos;
 }
-const TX = 200, TY = 620, TS = 150;
+const TX = 200, TY = 620, TS = 132;
 function sceneRoles(t) {
   L.bg(C.blue);
   const c = L.c, e = L.e, u = t - T.roles;
@@ -928,10 +930,10 @@ function sceneRoles(t) {
   setFont(c, 600, 26, FONT.en, 7); c.fillStyle = 'rgba(255,255,255,0.85)'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
   c.fillText('THE NEXT ' + scramble(ROLES[Math.min(idx, 11)][1], inv(0, 0.12, since), false, idx), TX + 4, TY + 82);
   // role list (right)
-  const lx = 1370, ly = 300, lh = 46, li = ease(T.roles - 0.1, T.roles + 0.3, t, E.outExpo);
+  const lx = 1540, ly = 300, lh = 44, li = ease(T.roles - 0.1, T.roles + 0.3, t, E.outExpo);
   c.save(); c.translate((1 - li) * 300, 0); c.globalAlpha = li;
   setFont(c, 500, 13, FONT.mono, 3); c.fillStyle = 'rgba(255,255,255,0.75)'; c.fillText('OPEN ROLES / 开放职位', lx, ly - 30);
-  setFont(c, 500, 25, FONT.zh, 1);
+  setFont(c, 500, 23, FONT.zh, 1);
   ROLES.slice(0, 12).forEach(([zh], k) => {
     const on = k === idx && pos < 11.5;
     c.fillStyle = on ? '#FFFFFF' : 'rgba(255,255,255,0.38)';
@@ -1016,6 +1018,7 @@ function sceneEnd(t) {
   L.bg(C.white);
   const c = L.c, u = t - T.end;
   const rise = (d, dur = 0.42) => E.glide(inv(d, d + dur, u));
+  c.save(); c.translate(960, 560); c.scale(1.22, 1.22); c.translate(-960, -560);
   wordmark(c, 960, 392, 470, C.ink, (i) => rise(0.06 + i * 0.045, 0.5));
   kText(c, '加入我们', 960, 548, { weight: 500, size: 74, color: C.ink, align: 'center', tracking: 8, anim: (i) => { const p = rise(0.2 + i * 0.05); return { dy: (1 - p) * 30, a: p }; } });
   const pm = rise(0.34);
@@ -1033,7 +1036,7 @@ function sceneEnd(t) {
   c.restore();
   const pw = rise(0.6);
   c.save(); c.globalAlpha = pw * 0.9; setFont(c, 500, 15, FONT.zh, 3); c.fillStyle = C.pewter; c.textAlign = 'center';
-  c.fillText('招聘公众号  TeslaHire', 960, 1000); c.restore();
+  c.fillText('招聘公众号  TeslaHire', 960, 900); c.restore();
   // pointer
   const pp = E.inOutCubic(inv(0.72, 1.18, u));
   if (u > 0.7) {
@@ -1043,6 +1046,7 @@ function sceneEnd(t) {
     c.fillStyle = C.ink; c.strokeStyle = '#FFFFFF'; c.lineWidth = 2; c.lineJoin = 'round'; c.stroke(); c.fill();
     c.restore();
   }
+  c.restore();
 }
 
 // ───────────── master timeline ─────────────
@@ -1071,14 +1075,14 @@ function drawFrame(t) {
   }
   if (t < sS) { sceneAI(t); hud(t, C.fog); return; }
   if (t < sE) {
-    const y = E.inOutCubic(inv(sS, sE, t)) * (H + 60) - 30;
+    const y = H + 30 - E.inOutCubic(inv(sS, sE, t)) * (H + 60);
     sceneAI(t);
-    L.save(); L.clipRect(0, 0, W, y); sceneRobot(t); L.restore();
-    const g = c.createLinearGradient(0, y - 90, 0, y); g.addColorStop(0, 'rgba(62,106,225,0)'); g.addColorStop(1, 'rgba(62,106,225,0.25)');
-    c.fillStyle = g; c.fillRect(0, y - 90, W, 90);
+    L.save(); L.clipRect(0, y, W, H - y + 2); sceneRobot(t); L.restore();
+    const g = c.createLinearGradient(0, y, 0, y + 90); g.addColorStop(0, 'rgba(62,106,225,0.25)'); g.addColorStop(1, 'rgba(62,106,225,0)');
+    c.fillStyle = g; c.fillRect(0, y, W, 90);
     c.fillStyle = '#FFFFFF'; c.fillRect(0, y - 1.5, W, 3);
     e.fillStyle = C.blue; e.fillRect(0, y - 8, W, 16);
-    hud(t, y > H / 2 ? C.pewter : C.fog); return;
+    hud(t, y < H / 2 ? C.pewter : C.fog); return;
   }
   if (t < pS) { sceneRobot(t); hud(t, C.pewter); return; }
   if (t < pE) {

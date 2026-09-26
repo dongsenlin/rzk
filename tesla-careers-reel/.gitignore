@@ -1,2 +1,6 @@
 assets/
 build/
+out/tesla_careers_reel_15s.mp4
+out/*_v1.mp4
+node_modules/
+package-lock.json
