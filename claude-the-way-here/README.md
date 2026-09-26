@@ -22,3 +22,12 @@
 配乐：极简钢琴 + 深沉模拟合成器铺底；「动手 / 写代码」段落加入脉冲逐渐推高；「而此刻」前全片静默一拍再展开；最后一句只留一个钢琴音。
 
 配音提示词见 `vo/AISTUDIO_PROMPT.md`。
+
+## 进度（已暂停）
+
+- 已收到两条 Leda 录音：`vo/take_a_1633.wav`（96.3 秒）、`vo/take_b_1635.wav`（97.9 秒）。
+- 两条开头都先即兴念了一段不在文案里的内容，正文前面多出来的部分分别约 36 秒（A）和 42 秒（B），应该是模型根据场景描述自己发挥的；
+  之后才完整读了全部 13 句。逐句听写都对得上：A 条正文从 36.8 秒到 96.0 秒（约 59 秒），B 条正文从 42.7 秒到 97.6 秒（约 55 秒）。
+- 下一步：只截取正文，按 `src/script.json` 的 l01–l13 切句，逐句打分后选定录音；然后是字体、时间轴、配乐和各场景。
+- 字体（不入库）：`npm pack @fontsource/noto-serif-sc @fontsource/instrument-serif @fontsource-variable/newsreader`（GitHub 直链会被代理拒绝）。
+- `src/` 里的 engine.js、render.js、reel.html、vo_align.py 目前是从 `xiaomi-n90-reel` 原样拷来的底子，还没改。

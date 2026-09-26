@@ -1,0 +1,5 @@
+assets/
+build/
+out/*_master.mp4
+node_modules/
+photos/selected/
