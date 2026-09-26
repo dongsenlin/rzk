@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Tesla Careers Reel</title>
+<style>
+  @font-face { font-family: NotoSC; src: url(../assets/fonts/NotoSansSC[wght].ttf); font-weight: 100 900; }
+  @font-face { font-family: Manrope; src: url(../assets/fonts/Manrope[wght].ttf); font-weight: 200 800; }
+  @font-face { font-family: GeistMono; src: url(../assets/fonts/GeistMono[wght].ttf); font-weight: 100 900; }
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  canvas#out { display: block; width: 100vw; height: auto; max-height: 100vh; object-fit: contain; }
+  #ui { position: fixed; left: 0; right: 0; bottom: 0; display: none; gap: 8px; padding: 8px; background: rgba(0,0,0,.6); color: #fff; font: 12px monospace; align-items: center; }
+  #ui input { flex: 1; }
+</style>
+</head>
+<body>
+<canvas id="out"></canvas>
+<div id="ui"><button id="play">play</button><input id="scrub" type="range" min="0" max="449" value="0"><span id="tc"></span></div>
+<script src="engine.js"></script>
+<script src="scenes.js"></script>
+<script>
+  // Load every face/weight before the first frame so no glyph falls back.
+  window.READY = (async () => {
+    const zh = '改变世界从一条线开始可持续交通再生能源人工智能机器人下一个突破由你创造加入特斯拉我们建设富足非凡的工作机会上海序章工程师设计软件数据科学家制造专家销售顾问服务技师供应链实习生研究员车长轴距高视觉神经网络灵巧手执行器储能电池开放职位查看微信公众号，。·—：';
+    const faces = [];
+    for (const w of [300, 400, 500, 600, 700, 800]) faces.push(`${w} 40px NotoSC`, `${w} 40px Manrope`, `${w} 40px GeistMono`);
+    await Promise.all(faces.map(f => document.fonts.load(f, zh + 'ABCabc0123')));
+    await document.fonts.ready;
+    return true;
+  })();
+  if (new URLSearchParams(location.search).has('preview')) {
+    READY.then(() => {
+      const ui = document.getElementById('ui'); ui.style.display = 'flex';
+      const scrub = document.getElementById('scrub'), tc = document.getElementById('tc');
+      let playing = false, t0 = 0, f0 = 0;
+      const show = f => { renderFrame(f, 1); scrub.value = f; tc.textContent = (f / FPS).toFixed(2) + 's'; };
+      scrub.oninput = () => { playing = false; show(+scrub.value); };
+      document.getElementById('play').onclick = () => { playing = !playing; t0 = performance.now(); f0 = +scrub.value; };
+      (function loop() { if (playing) show(Math.floor(f0 + (performance.now() - t0) / 1000 * FPS) % NFRAMES); requestAnimationFrame(loop); })();
+      show(0);
+    });
+  }
+</script>
+</body>
+</html>
