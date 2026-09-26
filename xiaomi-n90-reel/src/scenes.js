@@ -8,7 +8,7 @@
 'use strict';
 
 const T = {
-  range: cut(4), drop: bt(8), space: cut(10), photoIn: bt(14), cap: cut(16), mont: cut(20), build: cut(24), end: cut(28),
+  range: bt(4.5), drop: bt(8), space: cut(10), photoIn: bt(14), cap: cut(16), mont: cut(20), build: cut(24), end: cut(28),
 };
 
 // VO syllable times (build/vo/manifest.json overrides these)
@@ -33,8 +33,11 @@ const MONT = [
   ['detail7', '山海之间，随时露营', 'OUTDOOR LIFE'], ['detail8', '2+2+3 大七座', '最大储物空间 1831 L'],
 ];
 const LAYOUTS = ['2+2+3 大七座', '二排零重力', '全平大床', '移动岛台'];
-window.ALL_TEXT = '把家带去远方一千七百零五公里说走就走大七座十一种空间随心而变四驱越野无惧山海小米澎程湃每综合续航纯电增程布局舱内纵向储物最大涉水深度双电机四驱上市售价万元起'
-  + '蜻蜓灯光环尾中控屏英寸零重力椅移动岛台冰箱风阻系数智能细节模式床二排全平岛台压缩机照射距离蝴蝶谷蓝火山灰酒红车身配色间随时露营之，。·—：' + MONT.map(m => m[1] + m[2]).join('') + LAYOUTS.join('')
+// end-card billing block: [label, name, font] per column, labels in the film's '中文 · ENGLISH' style
+const CREDIT = [['出品 · PRODUCED BY', '栋森网络科技', 'zh'], ['AI 创作 · CREATED WITH', 'Claude Opus 5.5', 'en']];
+const NOTE = '概念练手 · 非官方';                                 // small print for the whole film: a concept piece, not an official Xiaomi film
+window.ALL_TEXT = CREDIT.map(k => k[0] + k[1]).join('') + NOTE + '把家带去远方一千七百零五公里说走就走大七座十一种空间随心而变四驱越野无惧山海小米澎程湃每综合续航纯电增程布局舱内纵向储物最大涉水深度双电机四驱上市售价万元起'
+  + '乘坐蜻蜓灯光环尾中控屏英寸零重力椅移动岛台冰箱风阻系数智能细节模式床二排全平岛台压缩机照射距离蝴蝶谷蓝火山灰酒红车身配色间随时露营之，。·—：' + MONT.map(m => m[1] + m[2]).join('') + LAYOUTS.join('')
   + 'XIAOMI SKYNOMAD N90 MAX HOME, ANYWHERE CLTC km mm L Cd xiaomiev.com HyperOS';
 
 // ───────────── photo helpers ─────────────
@@ -65,18 +68,32 @@ function label(c, txt, x, y, o = {}) {
   c.save(); c.globalAlpha *= a; setFont(c, weight, size, fam, track); c.fillStyle = color; c.textAlign = align; c.textBaseline = 'alphabetic';
   c.fillText(txt, x, y); c.restore();
 }
-// Words that rise out of a mask, one glyph per VO syllable.
+// Words that rise out of a mask.  Each phrase starts on its VO syllable and the
+// rest of the phrase follows quickly, so a line is always complete before the cut.
+function phraseTimes(id, idx, step = 0.06) {
+  const out = []; let start = null, first = 0, prev = 0;
+  idx.forEach((k, i) => {
+    if (k < 0) { out.push(prev + 0.05); start = null; return; }        // punctuation closes a phrase
+    const tv = vo(id, k);
+    if (start === null) { start = tv; first = k; }
+    const tt = Math.min(tv, start + step * (k - first));
+    out.push(tt); prev = tt;
+  });
+  return out;
+}
 function voLine(c, str, x, y, id, idx, o = {}) {
-  const { size = 100, weight = 600, color = C.white, align = 'left', fam = FONT.zh, tracking = 2, tOut = 99, lift = 1.0 } = o;
+  const { size = 100, weight = 600, color = C.white, align = 'left', fam = FONT.zh, tracking = 2, tOut = 99, lift = 1.0, clipY = null } = o;
   const out = E.inCubic(inv(tOut, tOut + 0.3, T_NOW));
   if (out >= 1) return;
+  const times = phraseTimes(id, idx);
   c.save(); c.globalAlpha *= 1 - out;
   c.beginPath(); c.rect(0, y - size * 1.05, W, size * 1.35); c.clip();
+  if (clipY) { c.beginPath(); c.rect(0, clipY[0], W, clipY[1] - clipY[0]); c.clip(); }
   kText(c, str, x, y - out * 40, {
     weight, size, color, align, fam, tracking,
     anim: (i) => {
-      const k = idx[i]; const ti = k < 0 ? vo(id, -k - 1) + 0.12 : vo(id, k) - 0.05;
-      const p = inv(ti, ti + 0.34 * lift, T_NOW);
+      const ti = times[i] - 0.05;
+      const p = inv(ti, ti + 0.3 * lift, T_NOW);
       return { dy: (1 - E.outExpo(p)) * size * 1.05, a: p > 0 ? 1 : 0 };
     },
   });
@@ -163,14 +180,27 @@ function hud(t, a = 1) {
   label(c, '小米澎程', 72, 100, { size: 16, weight: 500, fam: FONT.zh, track: 4, color: ink(0.7) });
   label(c, 'N90 MAX', W - 72, 74, { size: 15, weight: 600, track: 6, align: 'right', color: ink(0.85) });
   label(c, '2026', W - 72, 100, { size: 15, weight: 500, track: 4, align: 'right', color: ink(0.6) });
+  // the progress row sits on grass, water or black in every scene, so it is always white;
+  // a thin scrim keeps it (and the small print) readable on the head-lit asphalt in 02
+  shade(c, 0, H - 130, 0, H, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.42)']]);
+  const low = (al) => `rgba(255,255,255,${al})`;
   const x0 = 72, x1 = W - 72, y = H - 58;
-  c.fillStyle = ink(0.25); c.fillRect(x0, y, x1 - x0, 2);
-  c.fillStyle = HUD_INK === '255,255,255' ? C.teal : C.tealDeep; c.fillRect(x0, y, (x1 - x0) * clamp(t / 15), 2);
+  c.fillStyle = low(0.25); c.fillRect(x0, y, x1 - x0, 2);
+  c.fillStyle = C.teal; c.fillRect(x0, y, (x1 - x0) * clamp(t / 15), 2);
   CHAP.forEach(([t0, name], i) => {
     const x = x0 + (x1 - x0) * t0 / 15, on = t >= t0 && (i === CHAP.length - 1 || t < CHAP[i + 1][0]);
-    c.fillStyle = on ? ink(1) : ink(0.45); c.fillRect(x, y - 5, 2, 12);
-    label(c, `0${i + 1} ${name}`, x + 8, y - 12, { size: 13, weight: on ? 600 : 400, fam: FONT.zh, track: 2, color: on ? ink(1) : ink(0.5) });
+    c.fillStyle = on ? low(1) : low(0.45); c.fillRect(x, y - 5, 2, 12);
+    label(c, `0${i + 1} ${name}`, x + 8, y - 12, { size: 13, weight: on ? 600 : 400, fam: FONT.zh, track: 2, color: on ? low(1) : low(0.5) });
   });
+  c.restore();
+}
+// small print under the progress row, bottom right, from the first second to the last frame
+function note(t, onLight) {
+  const a = ease(0.5, 1.1, t);
+  if (a <= 0) return;
+  const c = L.c; c.save(); c.globalAlpha = a;
+  if (!onLight) { c.shadowColor = 'rgba(0,0,0,0.7)'; c.shadowBlur = 10; }
+  label(c, NOTE, W - 72, H - 24, { size: 15, weight: 500, fam: FONT.zh, track: 3, align: 'right', color: onLight ? 'rgba(10,11,13,0.6)' : 'rgba(255,255,255,0.75)' });
   c.restore();
 }
 
@@ -207,9 +237,10 @@ function sceneIntro(t) {
     }
   }
   // title in ink over the bright dawn sky
-  voLine(c, '把家，带去远方', 140, 330, 'vo1', [0, 1, -2, 2, 3, 4, 5], { size: 108, weight: 600, tracking: 6, color: C.ink, tOut: T.range - 0.2 });
+  const ttl = (col, clipY) => voLine(c, '把家，带去远方', 140, 330, 'vo1', [0, 1, -2, 2, 3, 4, 5], { size: 108, weight: 600, tracking: 6, color: col, tOut: T.range - 0.05, clipY });
+  ttl('#FFFFFF', [0, top]); ttl(C.ink, [top, bot]); ttl('#FFFFFF', [bot, H]);
   label(c, scramble('HOME, ANYWHERE', inv(vo('vo1', 2), vo('vo1', 2) + 0.6, t), false, 3), 146, 394,
-    { size: 24, weight: 700, track: 12, color: C.tealDeep, a: 1 - inv(T.range - 0.2, T.range + 0.1, t) });
+    { size: 24, weight: 700, track: 12, color: top < 380 ? C.tealDeep : C.tealHi, a: 1 - inv(T.range - 0.05, T.range + 0.2, t) });
 }
 
 // ───────────── 02 续航 — route along the bridge, then 说走就走 ─────────────
@@ -359,7 +390,7 @@ function sceneSpace(t) {
       c.save(); c.globalAlpha = dp * dia; c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1.2;
       c.beginPath(); c.moveTo(lerp((xa + xb) / 2, xa, dp), y); c.lineTo(lerp((xa + xb) / 2, xb, dp), y); c.moveTo(xa, y - 8); c.lineTo(xa, y + 8); c.moveTo(xb, y - 8); c.lineTo(xb, y + 8); c.stroke();
       c.restore();
-      label(c, '舱内纵向空间 2760 mm', (xa + xb) / 2, y + 34, { size: 18, weight: 500, fam: FONT.zh, align: 'center', track: 2, a: dp * dia });
+      label(c, '舱内乘坐空间 2760 mm', (xa + xb) / 2, y + 34, { size: 18, weight: 500, fam: FONT.zh, align: 'center', track: 2, a: dp * dia });
     }
   }
   // left column: layout counter + name
@@ -368,7 +399,7 @@ function sceneSpace(t) {
     const cnt = 1 + 10 * E.inOutQuad(inv(T.space, T.photoIn, t));
     odometer(c, cnt, 140, 560, { size: 200, digits: 2 });
     label(c, '种空间布局', 150, 620, { size: 40, weight: 600, fam: FONT.zh, track: 4, color: '#fff' });
-    label(c, 'RECONFIGURABLE CABIN', 152, 660, { size: 18, weight: 600, track: 8, color: C.tealHi });
+    label(c, 'RECONFIGURABLE CABIN', 152, 660, { size: 15, weight: 600, track: 4, color: C.tealHi });
     const k = seats.k, since = t - (T.space + k * BEAT);
     c.fillStyle = C.teal; c.fillRect(150, 712, 46 * ease(0, 0.2, since, E.outCubic), 3);
     label(c, scramble(LAYOUTS[k], inv(0, 0.18, since), true, k), 150, 760, { size: 34, weight: 600, fam: FONT.zh, track: 3, color: '#fff' });
@@ -391,7 +422,7 @@ function sceneSpace(t) {
     [['零重力座椅', 0.3], ['2+2+3 大七座', 0.42], ['移动岛台 · 9 L 冰箱', 0.54]].forEach(([txt, d], i) =>
       pill(c, txt, 140, 820 + i * 66, ease(T.photoIn + d, T.photoIn + d + 0.18, t, E.outBack)));
   }
-  voLine(c, '随心而变', 140, 300, 'vo3', [8, 9, 10, 11], { size: 96, weight: 700, tracking: 6, tOut: T.cap - 0.15 });
+  voLine(c, '大七座，十一种空间，随心而变', 140, 290, 'vo3', [0, 1, 2, -3, 3, 4, 5, 6, 7, -8, 8, 9, 10, 11], { size: 86, weight: 700, tracking: 4, tOut: T.cap - 0.12 });
 }
 
 // ───────────── 04 越野 — the water rises to 750 mm on the car itself ─────────────
@@ -429,7 +460,7 @@ function sceneCap(t) {
   c.restore();
   [['双电机四驱', 0.12], ['0–100 km/h 5.9 s', 0.36]].forEach(([txt, d], i) =>
     pill(c, txt, 140, 470 + i * 70, ease(T.cap + d, T.cap + d + 0.22, t, E.outBack)));
-  voLine(c, '无惧山海', 140, 300, 'vo4', [4, 5, 6, 7], { size: 128, weight: 700, tracking: 8, tOut: T.mont - 0.12 });
+  voLine(c, '四驱越野，无惧山海', 140, 300, 'vo4', [0, 1, 2, 3, -4, 4, 5, 6, 7], { size: 108, weight: 700, tracking: 6, tOut: T.mont - 0.08 });
 }
 
 // ───────────── 05 细节 — eight cuts on the eighth notes ─────────────
@@ -490,6 +521,7 @@ function sceneEnd(t) {
   const c = L.c, e = L.e, u = t - T.end;
   drawCam(c, cam('hero', 0.56, 0.5, 1.1 - 0.05 * E.outCubic(inv(0, 1.8, u))));
   shade(c, 0, 0, W, 0, [[0, 'rgba(242,242,240,0.92)'], [0.38, 'rgba(242,242,240,0.55)'], [0.62, 'rgba(242,242,240,0)']]);
+  shade(c, 0, H - 280, 0, H, [[0, 'rgba(242,242,240,0)'], [1, 'rgba(242,242,240,0.75)']]);   // fog over the reflection, keeps the credit legible
   const r = (d, dur = 0.45) => E.glide(inv(d, d + dur, u));
   c.save(); const a1 = r(0.02); c.globalAlpha = a1; c.translate(0, (1 - a1) * 30);
   setFont(c, 700, 100, FONT.zh, 8); c.fillStyle = C.ink; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText('小米澎程', 140, 470);
@@ -507,13 +539,35 @@ function sceneEnd(t) {
   c.restore();
   label(c, 'xiaomiev.com', 144, 958, { size: 20, weight: 600, track: 3, color: 'rgba(10,11,13,0.55)', a: r(0.7) });
   label(c, 'XIAOMI SKYNOMAD', 72, 74, { size: 15, weight: 600, track: 6, color: 'rgba(10,11,13,0.8)', a: r(0.3) });
+  // billing block, bottom right: two columns (label over name) split by a teal hairline
+  const xr = 1848, yL = 958, yN = 996;               // label row shares the xiaomiev.com baseline
+  const lab = { size: 13, weight: 500, fam: FONT.zh, track: 3, color: 'rgba(10,11,13,0.5)' };
+  const cols = CREDIT.map(([l, n, f]) => {
+    const fam = FONT[f], trk = f === 'zh' ? 3 : 1;
+    return { l, n, fam, trk, w: Math.max(textW(c, l, lab.weight, lab.size, lab.fam, lab.track), textW(c, n, 600, 24, fam, trk)) };
+  });
+  const gap = 64, x2 = xr - cols[1].w, x1 = x2 - gap - cols[0].w;
+  cols.forEach((k, i) => {
+    const a = r(0.4 + 0.15 * i, 0.5); if (a <= 0) return;
+    const x = i ? x2 : x1;
+    c.save(); c.globalAlpha = a; c.translate(0, (1 - a) * 12);
+    label(c, k.l, x, yL, lab);
+    setFont(c, 600, 24, k.fam, k.trk); c.fillStyle = 'rgba(10,11,13,0.9)'; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText(k.n, x, yN);
+    c.restore();
+  });
+  const dv = E.outCubic(r(0.5, 0.45)), xd = x2 - gap / 2, ym = (yL - 12 + yN + 4) / 2, hh = (yN + 4 - (yL - 12)) / 2 * dv;
+  if (dv > 0) { c.fillStyle = C.teal; c.fillRect(xd - 1, ym - hh, 2, hh * 2); }
 }
 
 // ───────────── master timeline ─────────────
 function drawFrame(t) {
+  drawScenes(t);
+  note(t, t >= T.end - 0.02);
+}
+function drawScenes(t) {
   T_NOW = t;
   const c = L.c, e = L.e;
-  const pS = T.range - 0.2, pE = T.range + 0.08;
+  const pS = T.range - 0.1, pE = T.range + 0.14;
   const cS = T.cap - 0.02, eS = T.end - 0.02;
   if (t < pS) { sceneIntro(t); HUD_INK = '10,11,13'; hud(t); return; }
   if (t < pE) {

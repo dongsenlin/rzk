@@ -31,7 +31,7 @@ def cut(beat):                       # same snapping as scenes.js
     return (round(bt(beat) * FPS - 0.5) + 0.5) / FPS
 
 
-T = dict(range=cut(4), drop=bt(8), space=cut(10), photoIn=bt(14), cap=cut(16), mont=cut(20), build=cut(24), end=cut(28))
+T = dict(range=bt(4.5), drop=bt(8), space=cut(10), photoIn=bt(14), cap=cut(16), mont=cut(20), build=cut(24), end=cut(28))
 
 
 def midi(n):
@@ -422,7 +422,7 @@ def compose():
     sfx.add(0.04, blip(midi(86), 0.4, 0.08), pan=0.0)
     sfx.add(0.42, whoosh(0.8, 300, 5000, 0.6, 0.55, (0, 0)))                         # letterbox opens
     sfx.add(1.12, impact(0.35, 1.4, 70, 36))
-    sfx.add(T['range'] - 0.22, whoosh(0.34, 500, 7000, 0.8, 0.8, (0.9, -0.7)))      # push
+    sfx.add(T['range'] - 0.12, whoosh(0.3, 500, 7000, 0.8, 0.75, (0.9, -0.7)))      # push
     sfx.add(T['range'], impact(0.4, 1.0, 85, 42))
     n = 44                                                                          # odometer ticks accelerating
     for k in range(n):
@@ -511,9 +511,11 @@ def compress(x, thresh_db, ratio, att, rel, makeup_db=0):
 
 # ───────────────────────── loudness (ITU-R BS.1770) ─────────────────────────
 def k_weight(x):
-    b1, a1 = shelf(1681.97, 4.0, 1.0)
-    x = signal.lfilter(b1, a1, x, axis=0)
-    return signal.sosfilt(sos('highpass', 38.1, 2), x, axis=0)
+    # BS.1770-4 pre-filter (high shelf) and RLB high-pass, reference coefficients at 48 kHz.
+    # (A Butterworth high-pass here reads bass-heavy mixes ~1.5 LU hot.)
+    assert SR == 48000
+    x = signal.lfilter([1.53512485958697, -2.69169618940638, 1.19839281085285], [1, -1.69065929318241, 0.73248077421585], x, axis=0)
+    return signal.lfilter([1.0, -2.0, 1.0], [1, -1.99004745483398, 0.99007225036621], x, axis=0)
 
 
 def lufs(x):
