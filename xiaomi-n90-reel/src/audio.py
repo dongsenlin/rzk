@@ -14,8 +14,10 @@ from scipy import signal
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SR = 48000
-DUR = 15.0
+DUR = 15.0                     # the film proper
 N = int(SR * DUR)
+PRE = 4.0                      # documentary title opening in front of it (PRE in engine.js)
+NPRE = int(SR * PRE)
 BPM = 128
 BEAT = 60 / BPM
 BAR = 4 * BEAT
@@ -40,8 +42,8 @@ def midi(n):
 
 # ───────────────────────── buses ─────────────────────────
 class Bus:
-    def __init__(self):
-        self.x = np.zeros((N, 2))
+    def __init__(self, n=None):
+        self.x = np.zeros((n or N, 2))
 
     def add(self, t0, sig, gain=1.0, pan=0.0):
         """sig mono (n,) or stereo (n,2); pan -1..1 (equal power) for mono."""
@@ -51,7 +53,7 @@ class Bus:
             sig = np.stack([sig * np.cos(a), sig * np.sin(a)], 1) * np.sqrt(2)
         if i0 < 0:
             sig = sig[-i0:]; i0 = 0
-        n = min(len(sig), N - i0)
+        n = min(len(sig), len(self.x) - i0)
         if n > 0:
             self.x[i0:i0 + n] += sig[:n] * gain
 
@@ -547,6 +549,46 @@ def limiter(x, ceiling=0.89, look=0.003, rel=0.06):
     return x * g[:, None]
 
 
+# ───────────────────────── 00 documentary opening ─────────────────────────
+def felt(f, g=1.0, dec=1.6):
+    """soft felt-piano tone: slightly stretched partials, a muted hammer, long decay"""
+    t = tt(dec * 3.5)
+    x = np.zeros(len(t))
+    for k, a in [(1, 1.0), (2, 0.42), (3, 0.16), (4, 0.07), (5, 0.03)]:
+        x += a * np.sin(phase(np.full(len(t), f * k * (1 + 0.00035 * k * k)))) * np.exp(-t / (dec / k ** 0.8))
+    x *= adsr(len(t), 0.006, 0.08, 1.0, 0.2)
+    ham = filt(noise(0.03), 'bandpass', [600, 2500]) * np.exp(-tt(0.03) / 0.006) * 0.12
+    x[:len(ham)] += ham
+    return filt(x, 'lowpass', 3200) * g
+
+
+def opening():
+    """PRE seconds before the film: a low D drone and room air under the title cards, a quiet felt
+    chord for the billing block, a lower one for the title, then a reversed chord that swells into
+    the film's horizon line.  The drone rings on into the film's first seconds."""
+    n = NPRE + int(2.5 * SR)
+    ob, verb = Bus(n), Bus(n)
+    t = np.arange(n) / SR
+    dr = pad_chord([38, 45, 50, 57], n / SR, (180, 700), 1.0, det=0.08)
+    denv = np.clip(t / 1.4, 0, 1) ** 1.6 * (1 - 0.35 * np.clip((t - 3.3) / 0.6, 0, 1)) * np.exp(-np.clip(t - PRE, 0, None) / 0.9)
+    ob.add(0, dr[:n] * denv[:len(dr), None])
+    air = filt(noise(n / SR), 'bandpass', [1800, 7500])[:n] * 0.02 * np.clip(t / 0.8, 0, 1) * (1 - np.clip((t - 3.5) / 0.5, 0, 1))
+    ob.add(0, width(air, np.roll(air, 211)))
+    ob.add(0.26, whoosh(0.9, 250, 2600, 0.28, 0.45, (-0.3, 0.3)))                    # the rule draws
+    for dt, nt, p in [(0.42, 62, -0.2), (0.44, 69, 0.0), (0.60, 74, 0.25), (0.62, 78, 0.3)]:    # billing, left then right
+        sig = felt(midi(nt), 0.22); ob.add(dt, sig, pan=p); verb.add(dt, sig, 0.9, p)
+    for dt, nt, p in [(2.10, 50, 0.0), (2.11, 57, -0.15), (2.12, 62, 0.15), (2.13, 66, -0.25), (2.14, 74, 0.25)]:   # title
+        sig = felt(midi(nt), 0.26, dec=2.0); ob.add(dt, sig, pan=p); verb.add(dt, sig, 0.9, p)
+    ob.add(2.10, filt(impact(0.35, 2.5, 55, 36), 'lowpass', 180))
+    sw = np.zeros(int(1.3 * SR))                                                       # reversed swell into the film
+    for nt in (69, 74, 78, 81):
+        sw += felt(midi(nt), 0.2, dec=1.2)[:len(sw)]
+    sw = conv_st(np.stack([sw, sw], 1), reverb_ir(1.3, 0.01, 0.4, 5000, 11))[::-1] * np.linspace(0, 1, len(sw))[:, None] ** 2
+    ob.add(PRE - len(sw) / SR, sw, 0.7)
+    ob.add(PRE - 0.9, suck(0.9, 0.35))
+    return ob.x + conv_st(verb.x, reverb_ir(3.2, 0.03, 0.9, 5500, 5)) * 0.45
+
+
 def main():
     compose()
     v = vo_track()
@@ -569,6 +611,12 @@ def main():
     mix = filt(mix, 'highpass', 25)
     # tail fade
     f = int(0.35 * SR); mix[-f:] *= np.linspace(1, 0, f)[:, None] ** 1.5
+    # the documentary opening goes in front, about 7 LU under the film (built last so the film's
+    # random draws, and therefore its sound, stay exactly as before)
+    op = opening()
+    op *= 10 ** ((lufs(mix) - 7.0 - lufs(op[:NPRE])) / 20)
+    full = np.zeros((NPRE + len(mix), 2)); full[NPRE:] = mix; full[:len(op)] += op
+    mix = full
     # loudness to -14 LUFS, then true-peak safe limiting
     for _ in range(3):
         mix *= 10 ** ((-14.0 - lufs(mix)) / 20)

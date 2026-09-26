@@ -5,6 +5,7 @@
 //   node src/render.js --stills 0.5,2.9,4.2    PNG stills → build/stills/
 //   node src/render.js --sheet 0.5             contact sheet every 0.5 s → build/sheet.png
 //   options: --scale 0.5  --samples N  --workers N  --from F --to F  --out name.mp4
+//   (times and frames are global: the film proper starts after the PRE-second opening)
 'use strict';
 const path = require('path'), fs = require('fs'), http = require('http');
 const { spawn, execFileSync } = require('child_process');
@@ -58,6 +59,12 @@ async function page(browser) {
   await p.evaluate(() => window.READY);
   return p;
 }
+// length of the reel, read from engine.js so the opening and the film never drift apart
+async function meta() {
+  const b = await launch(), p = await b.newPage();
+  await p.goto(`http://127.0.0.1:${PORT}/src/reel.html?scale=${scale}`);
+  const m = await p.evaluate(() => window.META); await b.close(); return m;
+}
 let seq = 0;
 async function frame(p, f, s) {
   const key = `k${seq++}`;
@@ -86,7 +93,8 @@ async function stills(list) {
 
 async function sheet(step) {
   const dir = path.join(BUILD, 'sheet'); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
-  const frames = []; for (let t = 0; t < 15 - 1e-6; t += step) frames.push(Math.round(t * 30));
+  const M = await meta();
+  const frames = []; for (let t = 0; t < M.DUR - 1e-6; t += step) frames.push(Math.round(t * 30));
   const workers = parseInt(opt('workers', '3')), queue = frames.slice();
   await Promise.all(Array.from({ length: workers }, async () => {
     const b = await launch(), p = await page(b);
@@ -113,7 +121,8 @@ async function segment(from, to, out, worker) {
 }
 
 async function full() {
-  const from = parseInt(opt('from', '0')), to = parseInt(opt('to', '449'));
+  const M = await meta();
+  const from = parseInt(opt('from', '0')), to = parseInt(opt('to', String(M.NFRAMES - 1)));
   const workers = parseInt(opt('workers', '4'));
   const dir = path.join(BUILD, 'seg'); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
   const n = to - from + 1, per = Math.ceil(n / workers), jobs = [], names = [];

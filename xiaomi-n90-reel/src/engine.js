@@ -8,7 +8,8 @@
 'use strict';
 
 const W = 1920, H = 1080;
-const FPS = 30, DUR = 15.0, NFRAMES = Math.round(FPS * DUR);
+const PRE = 4.0, MAIN = 15.0;              // documentary title opening (whole frames), then the 15 s film
+const FPS = 30, DUR = PRE + MAIN, NFRAMES = Math.round(FPS * DUR);
 const BPM = 128, BEAT = 60 / BPM, BAR = BEAT * 4;
 const SHUTTER = 0.5;                       // 180°
 const Q = new URLSearchParams(location.search);
@@ -366,4 +367,4 @@ window.renderSend = async (i, samples, url) => {
   const r = await fetch(url, { method: 'POST', body: CPU.OUT.data });
   return r.ok;
 };
-window.META = { W, H, FPS, DUR, NFRAMES, BPM };
+window.META = { W, H, FPS, DUR, NFRAMES, BPM, PRE, MAIN };

@@ -186,9 +186,9 @@ function hud(t, a = 1) {
   const low = (al) => `rgba(255,255,255,${al})`;
   const x0 = 72, x1 = W - 72, y = H - 58;
   c.fillStyle = low(0.25); c.fillRect(x0, y, x1 - x0, 2);
-  c.fillStyle = C.teal; c.fillRect(x0, y, (x1 - x0) * clamp(t / 15), 2);
+  c.fillStyle = C.teal; c.fillRect(x0, y, (x1 - x0) * clamp(t / MAIN), 2);
   CHAP.forEach(([t0, name], i) => {
-    const x = x0 + (x1 - x0) * t0 / 15, on = t >= t0 && (i === CHAP.length - 1 || t < CHAP[i + 1][0]);
+    const x = x0 + (x1 - x0) * t0 / MAIN, on = t >= t0 && (i === CHAP.length - 1 || t < CHAP[i + 1][0]);
     c.fillStyle = on ? low(1) : low(0.45); c.fillRect(x, y - 5, 2, 12);
     label(c, `0${i + 1} ${name}`, x + 8, y - 12, { size: 13, weight: on ? 600 : 400, fam: FONT.zh, track: 2, color: on ? low(1) : low(0.5) });
   });
@@ -559,10 +559,81 @@ function sceneEnd(t) {
   if (dv > 0) { c.fillStyle = C.teal; c.fillRect(xd - 1, ym - hh, 2, hh * 2); }
 }
 
+// ───────────── 00 片头 — documentary cold open ─────────────
+// A black gate with grain.  The billing block, then the title, sit on a thin rule drawn exactly
+// where the film's horizon line will appear; at the end the rule folds into a point of warm light
+// and the film's horizon line bursts out of that same point.
+function docText(c, str, x, y, o = {}) {
+  const { size = 36, weight = 500, fam = FONT.zh, color = '#FFFFFF', track = 0, a = 1, blur = 0 } = o;
+  if (a <= 0) return;
+  const w = textW(c, str, weight, size, fam, track);
+  c.save(); c.globalAlpha *= a; if (blur > 0.05) c.filter = `blur(${blur.toFixed(2)}px)`;
+  setFont(c, weight, size, fam, track); c.fillStyle = color; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+  c.fillText(str, x - w / 2, y);                                   // centred without the trailing letter-space
+  c.restore();
+}
+function sceneOpen(t) {
+  L.bg('#050607');
+  const c = L.c, e = L.e;
+  const r0 = cam('intro', INTRO.u0, INTRO.v0, INTRO.z0);
+  const hy = r0 ? camPt(r0, 0, INTRO.hv)[1] : 560;               // the film's first horizon line
+  // cold haze drifting across the gate
+  const hx = 700 + 220 * t / PRE, hz = e.createRadialGradient(hx, hy - 120, 10, hx, hy - 120, 950);
+  hz.addColorStop(0, `rgba(95,182,170,${0.07 * env(t, 0.1, 1.4, 3.2, 3.9)})`); hz.addColorStop(1, 'rgba(95,182,170,0)');
+  e.fillStyle = hz; e.fillRect(0, 0, W, H);
+  // the rule
+  const rin = E.outExpo(inv(0.3, 1.1, t)), rout = E.inCubic(inv(3.45, 3.95, t)), rw = 700 * rin * (1 - rout);
+  if (rw > 0.5) {
+    const g = c.createLinearGradient(960 - rw / 2, 0, 960 + rw / 2, 0);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, `rgba(255,255,255,${0.5 + 0.5 * rout})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = g; c.fillRect(960 - rw / 2, hy - 0.75, rw, 1.5);
+  }
+  // 1 · billing block: two columns split by a teal hairline, tracking opens slowly
+  const cols = CREDIT.map(([l, n, f], i) => {
+    const fam = FONT[f], a = env(t, 0.42 + 0.18 * i, 1.05 + 0.18 * i, 1.72, 2.02);
+    const tk = lerp(f === 'zh' ? 3 : 1, f === 'zh' ? 7 : 3, inv(0.4, 2.0, t));
+    const w = Math.max(textW(c, l, 500, 15, FONT.zh, 6), textW(c, n, 500, 40, fam, f === 'zh' ? 7 : 3));
+    return { l, n, fam, a, tk, w };
+  });
+  const gap = 110, x0 = 960 - (cols[0].w + gap + cols[1].w) / 2;
+  cols.forEach((k, i) => {
+    if (k.a <= 0) return;
+    const cx = i ? x0 + cols[0].w + gap + cols[1].w / 2 : x0 + cols[0].w / 2, dy = (1 - k.a) * 14;
+    docText(c, k.l, cx, hy - 104 + dy, { size: 15, weight: 500, track: lerp(4, 6, inv(0.4, 2.0, t)), color: 'rgba(255,255,255,0.55)', a: k.a, blur: (1 - k.a) * 5 });
+    docText(c, k.n, cx, hy - 44 + dy, { size: 40, weight: 500, fam: k.fam, track: k.tk, a: k.a, blur: (1 - k.a) * 7 });
+  });
+  const dv = E.outCubic(inv(0.55, 1.1, t)) * (1 - inv(1.72, 2.0, t));
+  if (dv > 0) { const xd = x0 + cols[0].w + gap / 2, h2 = 44 * dv; c.fillStyle = C.teal; c.fillRect(xd - 1, hy - 76 - h2, 2, h2 * 2); }
+  // 2 · title
+  const k2 = env(t, 2.1, 2.8, 3.4, 3.78);
+  if (k2 > 0) {
+    docText(c, '小米澎程', 960, hy - 48 + (1 - k2) * 16, { size: 104, weight: 300, track: lerp(30, 48, inv(2.1, 3.8, t)), a: k2, blur: (1 - k2) * 9 });
+    docText(c, 'XIAOMI SKYNOMAD · N90 MAX', 960, hy + 54, { size: 16, weight: 500, fam: FONT.en, track: lerp(9, 13, inv(2.1, 3.8, t)),
+      color: 'rgba(255,255,255,0.6)', a: env(t, 2.4, 3.0, 3.35, 3.72) });
+  }
+  // small print, bottom centre, for the whole opening
+  docText(c, NOTE, 960, H - 86, { size: 18, weight: 500, track: 6, color: 'rgba(255,255,255,0.52)', a: env(t, 0.55, 1.15, 3.45, 3.8) });
+  // the rule folds into a point of warm light; the film's horizon line bursts out of it
+  const pt = E.inCubic(inv(3.45, 3.95, t)) * (1 - inv(3.95, 4.0, t));
+  if (pt > 0) {
+    const g = e.createRadialGradient(960, hy, 2, 960, hy, 60 + 300 * pt);
+    g.addColorStop(0, `rgba(255,244,232,${0.9 * pt})`); g.addColorStop(0.25, `rgba(255,170,90,${0.4 * pt})`); g.addColorStop(1, 'rgba(255,170,90,0)');
+    e.fillStyle = g; e.fillRect(0, 0, W, H);
+    c.fillStyle = `rgba(255,244,232,${pt})`; c.beginPath(); c.arc(960, hy, 1.5 + 3 * pt, 0, TAU); c.fill();
+  }
+}
+function fxOpen(t) {
+  const flicker = 1 + 0.012 * (hash(FRAME) - 0.5);                  // faint projector flicker
+  return { ca: 0.0008, flash: 0, vig: 0.5, grain: 0.045, bloom: 1.0, exposure: flicker };
+}
+
 // ───────────── master timeline ─────────────
+// global time: the PRE-second opening, then the film on its own clock (0–15 s)
 function drawFrame(t) {
-  drawScenes(t);
-  note(t, t >= T.end - 0.02);
+  if (t < PRE) { sceneOpen(t); return; }
+  const m = t - PRE;
+  drawScenes(m);
+  note(m, m >= T.end - 0.02);
 }
 function drawScenes(t) {
   T_NOW = t;
@@ -589,14 +660,16 @@ function drawScenes(t) {
   sceneEnd(t);
 }
 
-function fxAt(t) {
+function fxAt(t) { return t < PRE ? fxOpen(t) : fxMain(t - PRE); }
+function samplesAt(t) { return t < PRE ? 6 : samplesMain(t - PRE); }
+function fxMain(t) {
   const hit = (t0, k = 10) => t >= t0 ? Math.exp(-(t - t0) * k) : 0;
   const ca = 0.0008 + 0.005 * hit(T.drop, 8) + 0.004 * hit(T.space, 9) + 0.005 * hit(T.cap, 9) + 0.004 * hit(T.mont, 9) + 0.005 * hit(T.end, 7);
   const flash = 0.3 * hit(T.drop, 14) + 0.2 * hit(T.cap, 16) + 0.75 * hit(T.end, 8) + 0.12 * hit(T.space, 16);
   const light = t >= T.end;
   return { ca, flash, vig: light ? 0.12 : 0.36, grain: light ? 0.018 : 0.03, bloom: light ? 0.5 : 1.0 };
 }
-function samplesAt(t) {
+function samplesMain(t) {
   const within = (a, b) => t >= a && t <= b;
   if (within(T.range - 0.25, T.range + 0.15) || within(T.drop - 0.1, T.space + 0.1) || within(T.mont, T.build)) return 10;
   if (within(T.photoIn - 0.1, T.photoIn + 0.75) || within(T.end - 0.1, T.end + 0.4)) return 9;

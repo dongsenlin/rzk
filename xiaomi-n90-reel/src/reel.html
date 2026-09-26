@@ -47,6 +47,7 @@
     READY.then(() => {
       const ui = document.getElementById('ui'); ui.style.display = 'flex';
       const scrub = document.getElementById('scrub'), tc = document.getElementById('tc');
+      scrub.max = NFRAMES - 1;
       let playing = false, t0 = 0, f0 = 0;
       const show = f => { renderFrame(f, 1); scrub.value = f; tc.textContent = (f / FPS).toFixed(2) + 's'; };
       scrub.oninput = () => { playing = false; show(+scrub.value); };
