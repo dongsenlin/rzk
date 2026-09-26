@@ -559,6 +559,35 @@ function sceneEnd(t) {
   if (dv > 0) { c.fillStyle = C.teal; c.fillRect(xd - 1, ym - hh, 2, hh * 2); }
 }
 
+// ───────────── cover — frame 0 only ─────────────
+// The film opens on black, so players and chat previews would show a black thumbnail.  Frame 0
+// is a poster instead (it flashes by in 1/30 s; dark, so the cut to the black gate is soft).
+const IS_COVER = t => t < 0.5 / FPS;
+function sceneCover() {
+  L.bg('#050607');
+  const c = L.c;
+  drawCam(c, cam('drop', 0.5, 0.52, 1.04));
+  shade(c, 0, 0, W, 0, [[0, 'rgba(5,6,7,0.94)'], [0.34, 'rgba(5,6,7,0.7)'], [0.6, 'rgba(5,6,7,0)']]);
+  shade(c, 0, H - 300, 0, H, [[0, 'rgba(5,6,7,0)'], [1, 'rgba(5,6,7,0.8)']]);
+  c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+  label(c, 'XIAOMI SKYNOMAD', 146, 318, { size: 20, weight: 600, track: 8, color: C.tealHi });
+  setFont(c, 700, 150, FONT.zh, 10); c.fillStyle = '#FFFFFF'; c.fillText('小米澎程', 140, 482);
+  setFont(c, 900, 124, FONT.heavy, 2); c.fillText('N90 Max', 144, 622);
+  c.fillStyle = C.teal; c.fillRect(146, 662, 560, 6);
+  label(c, '把家，带去远方', 146, 758, { size: 56, weight: 600, fam: FONT.zh, track: 6, color: 'rgba(255,255,255,0.92)' });
+  // billing bottom left, small print bottom right — the same system as the film
+  let x = 146;
+  CREDIT.forEach(([l, n, f], i) => {
+    const fam = FONT[f], trk = f === 'zh' ? 3 : 1;
+    const w = Math.max(textW(c, l, 500, 14, FONT.zh, 3), textW(c, n, 600, 24, fam, trk));
+    if (i) { c.fillStyle = C.teal; c.fillRect(x - 33, 966, 2, 58); }
+    label(c, l, x, 984, { size: 14, weight: 500, fam: FONT.zh, track: 3, color: 'rgba(255,255,255,0.6)' });
+    setFont(c, 600, 24, fam, trk); c.fillStyle = 'rgba(255,255,255,0.95)'; c.textAlign = 'left'; c.fillText(n, x, 1020);
+    x += w + 64;
+  });
+  label(c, NOTE, W - 72, 1020, { size: 20, weight: 500, fam: FONT.zh, track: 5, align: 'right', color: 'rgba(255,255,255,0.78)' });
+}
+
 // ───────────── 00 片头 — documentary cold open ─────────────
 // A black gate with grain.  The billing block, then the title, sit on a thin rule drawn exactly
 // where the film's horizon line will appear; at the end the rule folds into a point of warm light
@@ -630,6 +659,7 @@ function fxOpen(t) {
 // ───────────── master timeline ─────────────
 // global time: the PRE-second opening, then the film on its own clock (0–15 s)
 function drawFrame(t) {
+  if (IS_COVER(t)) { sceneCover(); return; }
   if (t < PRE) { sceneOpen(t); return; }
   const m = t - PRE;
   drawScenes(m);
@@ -660,8 +690,11 @@ function drawScenes(t) {
   sceneEnd(t);
 }
 
-function fxAt(t) { return t < PRE ? fxOpen(t) : fxMain(t - PRE); }
-function samplesAt(t) { return t < PRE ? 6 : samplesMain(t - PRE); }
+function fxAt(t) {
+  if (IS_COVER(t)) return { ca: 0.0006, flash: 0, vig: 0.3, grain: 0.018, bloom: 0.6 };
+  return t < PRE ? fxOpen(t) : fxMain(t - PRE);
+}
+function samplesAt(t) { return IS_COVER(t) ? 1 : t < PRE ? 6 : samplesMain(t - PRE); }
 function fxMain(t) {
   const hit = (t0, k = 10) => t >= t0 ? Math.exp(-(t - t0) * k) : 0;
   const ca = 0.0008 + 0.005 * hit(T.drop, 8) + 0.004 * hit(T.space, 9) + 0.005 * hit(T.cap, 9) + 0.004 * hit(T.mont, 9) + 0.005 * hit(T.end, 7);

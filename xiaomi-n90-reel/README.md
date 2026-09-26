@@ -34,4 +34,4 @@ python3 src/get_photos.py
 python3 src/vo_take.py --file vo/leda_take_aistudio.wav && python3 src/vo_align.py
 PLAYWRIGHT=/opt/node22/lib/node_modules/playwright node src/render.js --workers 4   # → out/xiaomi-n90-reel_master.mp4，再压成 out/xiaomi_n90_max_19s.mp4
 ```
-`out/xiaomi_n90_max_19s.mp4` 是带片头的成片；`out/xiaomi_n90_max_15s.mp4` 是上一版不带片头的 15 秒版本。
+`out/xiaomi_n90_max_19s.mp4` 是带片头的成片，第 0 帧是封面（夜间俯拍 + 标题 + 署名 + 「概念练手 · 非官方」），这样播放器和聊天预览的缩略图不是黑屏；同一张封面另存为 `out/xiaomi_n90_max_cover.jpg`，平台可手动上传。`out/xiaomi_n90_max_15s.mp4` 是上一版不带片头的 15 秒版本。
