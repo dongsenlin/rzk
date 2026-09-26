@@ -1,0 +1,6 @@
+# the song is copyrighted: never commit it or anything that contains it
+music/
+build/
+out/
+assets/
+node_modules/
