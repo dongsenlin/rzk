@@ -1,0 +1,14 @@
+{
+  "name": "mid-autumn-2026",
+  "private": true,
+  "description": "栋森网络科技 携 Opus 5.5 中秋动态图形视频（15s, 9:16）",
+  "scripts": {
+    "cues": "node tools/render.mjs cues",
+    "audio": "python3 tools/soundtrack.py",
+    "render": "node tools/render.mjs video --audio output/soundtrack.wav",
+    "stills": "node tools/render.mjs stills"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  }
+}

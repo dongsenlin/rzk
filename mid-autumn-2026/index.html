@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>中秋 · 栋森网络科技 × Opus 5.5</title>
+<style>
+  @font-face { font-family: "Noto Serif SC"; src: url("fonts/NotoSerifSC-VF.ttf"); font-weight: 200 900; }
+  @font-face { font-family: "Cormorant Garamond"; src: url("fonts/CormorantGaramond-VF.ttf"); font-weight: 300 700; }
+  @font-face { font-family: "JetBrains Mono"; src: url("fonts/JetBrainsMono-VF.ttf"); font-weight: 100 800; }
+
+  html, body { margin: 0; background: #020308; color: #b9b3a3; font: 12px/1.4 "JetBrains Mono", ui-monospace, monospace; }
+  #stage { display: block; width: 1080px; height: 1920px; }
+  #bar { display: none; }
+
+  body.player { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+  body.player #stage { width: auto; height: calc(100vh - 72px); aspect-ratio: 9 / 16; max-width: 100vw; box-shadow: 0 0 0 1px #1a1d2e, 0 30px 80px #000; }
+  body.player #bar { display: flex; align-items: center; gap: 12px; width: min(560px, 92vw); }
+  #bar button { all: unset; cursor: pointer; width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #3a3526; border-radius: 50%; color: #d9b77a; }
+  #bar input { flex: 1; accent-color: #d9b77a; }
+  #time { width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<canvas id="stage" width="1080" height="1920"></canvas>
+<div id="bar">
+  <button id="play" title="Play / pause (space)">❚❚</button>
+  <input id="scrub" type="range" min="0" max="15" step="0.001" value="0">
+  <span id="time">0.00s</span>
+</div>
+<audio id="music" src="output/soundtrack.m4a" preload="none"></audio>
+<script src="src/util.js"></script>
+<script src="src/config.js"></script>
+<script src="src/glyphs.js"></script>
+<script src="src/assets.js"></script>
+<script src="src/scene.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>
