@@ -14,7 +14,15 @@ const ROOT = path.resolve(__dirname, '..');
 const BUILD = path.join(ROOT, 'build');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf('--' + k); return i < 0 ? d : (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true); };
-const FFMPEG = process.env.FFMPEG || execFileSync('python3', ['-c', 'import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())']).toString().trim();
+function findFfmpeg() {
+  if (process.env.FFMPEG) return process.env.FFMPEG;
+  try { execFileSync('ffmpeg', ['-version'], { stdio: 'ignore' }); return 'ffmpeg'; } catch (e) {}
+  for (const py of ['python3', 'python']) {
+    try { return execFileSync(py, ['-c', 'import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())']).toString().trim(); } catch (e) {}
+  }
+  throw new Error('ffmpeg not found: install ffmpeg or `pip install imageio-ffmpeg`, or set FFMPEG');
+}
+const FFMPEG = findFfmpeg();
 const scale = parseFloat(opt('scale', '1'));
 const samples = opt('samples', null) ? parseInt(opt('samples')) : null;
 const RW = Math.round(1920 * scale), RH = Math.round(1080 * scale);
@@ -118,6 +126,14 @@ async function full() {
   const out = path.join(BUILD, opt('out', 'video.mp4'));
   execFileSync(FFMPEG, ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', out]);
   console.log('video →', out);
+  const wav = path.join(BUILD, 'audio.wav');
+  if (fs.existsSync(wav) && !opt('noaudio', null)) {
+    const fin = path.join(ROOT, 'out', 'tesla_careers_reel_15s.mp4');
+    fs.mkdirSync(path.dirname(fin), { recursive: true });
+    execFileSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', out, '-i', wav, '-map', '0:v', '-map', '1:a', '-c:v', 'copy',
+      '-c:a', 'aac', '-b:a', '320k', '-ar', '48000', '-shortest', '-movflags', '+faststart', fin]);
+    console.log('final →', fin);
+  }
 }
 
 server.listen(0, '127.0.0.1', async () => {
