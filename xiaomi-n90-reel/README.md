@@ -14,13 +14,19 @@
 | 13.1–15 s | 07 片尾 | 小米澎程 N90 Max · 澎湃每一程 · 26.99 万元起 | 澎湃每一程。 |
 
 ## 素材
-- 官网图片：上传到 `photos/`，在 `photos/photos.json` 里指定图片位（hero, road, interior, offroad, side, detail1…8），
-  可选 `{"file": "...", "fx": 0.5, "fy": 0.5, "zoom": 1}` 调整裁切。缺图时用 `photos/placeholder/` 里的占位图。
+- 官网图片：来自 xiaomiev.com/skynomad/n90（用户打包上传到本仓库 Release `435` 的 `41.zip`）。
+  `python3 src/get_photos.py` 下载并解出片中用到的 15 张到 `photos/selected/`（不入库），映射见 `photos/photos.json`：
+  片头 2.jpg（草原晨光）· 续航 31.jpg（跨湖大桥）· “说走就走” 37.jpg（夜间俯拍）· 空间 12.jpg（2+2+3 剖视）·
+  越野 New_1-2.jpg（正侧面，水位按车高 1825 mm 换算到 750 mm）· 快切 New_1-3/New_1-4/New_1-1（蝴蝶谷蓝/火山灰/酒红）、
+  6.jpg、18cover.jpg、27-1.jpg、32-2.jpg、20.jpg · 收尾 29.jpg · 片尾 1.jpg。
+- 配音：Leda（Gemini 3.8 Flash TTS，AI Studio 生成的整段录音 `vo/leda_take_aistudio.wav`），由 `vo_take.py` 切句、`vo_align.py` 对齐。
 - 配音：`GEMINI_API_KEY=... python3 src/vo_take.py --gemini`（整段一次调用），或把 AI Studio 生成的 wav 放进 `vo/`
   后 `python3 src/vo_take.py --file vo/xxx.wav`；然后 `python3 src/vo_align.py`。
 
 ## 生成
 ```
 python3 src/audio.py
-PLAYWRIGHT=/opt/node22/lib/node_modules/playwright node src/render.js --workers 4   # → out/tesla_careers_reel_15s.mp4（母版）
+python3 src/get_photos.py
+python3 src/vo_take.py --file vo/leda_take_aistudio.wav && python3 src/vo_align.py
+PLAYWRIGHT=/opt/node22/lib/node_modules/playwright node src/render.js --workers 4   # → out/xiaomi-n90-reel_master.mp4，再压成 out/xiaomi_n90_max_15s.mp4
 ```

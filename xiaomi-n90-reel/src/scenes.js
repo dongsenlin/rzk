@@ -28,13 +28,13 @@ const VOT = (() => {
 const vo = (id, i) => { const a = VOT[id]; return a[Math.max(0, Math.min(i, a.length - 1))]; };
 
 const MONT = [
-  ['detail1', '蜻蜓大灯', '远光照射距离 624 m'], ['detail2', '光环尾灯', 'HALO TAILLIGHTS'], ['detail3', '16.1 英寸中控屏', 'XIAOMI HYPEROS'],
-  ['detail4', '零重力座椅', 'ZERO-GRAVITY SEATS'], ['detail5', '移动岛台 · 9 L 冰箱', 'MOBILE ISLAND'], ['detail6', '风阻系数 0.255 Cd', 'AERODYNAMICS'],
-  ['detail7', '双电机四驱', '0–100 km/h 5.9 s'], ['detail8', '2+2+3 大七座', '2760 mm 舱内纵向空间'],
+  ['detail1', '蝴蝶谷蓝', '车身配色 · COLOR'], ['detail2', '火山灰', '车身配色 · COLOR'], ['detail3', '酒红', '车身配色 · COLOR'],
+  ['detail4', '0–100 km/h 5.9 s', '双电机四驱 · DUAL-MOTOR AWD'], ['detail5', '零重力座椅', 'ZERO-GRAVITY SEATS'], ['detail6', '9 L 压缩机冰箱', '移动岛台 · MOBILE ISLAND'],
+  ['detail7', '山海之间，随时露营', 'OUTDOOR LIFE'], ['detail8', '2+2+3 大七座', '最大储物空间 1831 L'],
 ];
 const LAYOUTS = ['2+2+3 大七座', '二排零重力', '全平大床', '移动岛台'];
 window.ALL_TEXT = '把家带去远方一千七百零五公里说走就走大七座十一种空间随心而变四驱越野无惧山海小米澎程湃每综合续航纯电增程布局舱内纵向储物最大涉水深度双电机四驱上市售价万元起'
-  + '蜻蜓灯光环尾中控屏英寸零重力椅移动岛台冰箱风阻系数智能细节模式床二排全平岛台压缩机照射距离，。·—：' + MONT.map(m => m[1] + m[2]).join('') + LAYOUTS.join('')
+  + '蜻蜓灯光环尾中控屏英寸零重力椅移动岛台冰箱风阻系数智能细节模式床二排全平岛台压缩机照射距离蝴蝶谷蓝火山灰酒红车身配色间随时露营之，。·—：' + MONT.map(m => m[1] + m[2]).join('') + LAYOUTS.join('')
   + 'XIAOMI SKYNOMAD N90 MAX HOME, ANYWHERE CLTC km mm L Cd xiaomiev.com HyperOS';
 
 // ───────────── photo helpers ─────────────
@@ -130,144 +130,175 @@ function grid(c, { alpha = 1, offX = 0, offY = 0, rgb = '255,255,255', minor = 0
   c.restore();
 }
 
+// ───────────── camera over a photograph (normalised image point (u,v) → screen (sx,sy)) ─────────────
+function cam(key, u, v, z, sx = 960, sy = 540, cover = true) {
+  const img = ph(key); if (!img) return null;
+  const base = Math.max(W / img.naturalWidth, H / img.naturalHeight), s = base * z;
+  const iw = img.naturalWidth * s, ih = img.naturalHeight * s;
+  let x = sx - u * iw, y = sy - v * ih;
+  if (cover) { x = Math.min(0, Math.max(W - iw, x)); y = Math.min(0, Math.max(H - ih, y)); }
+  return { img, s, x, y, iw, ih };
+}
+function drawCam(c, r) { if (r) c.drawImage(r.img, r.x, r.y, r.iw, r.ih); else { c.fillStyle = '#1B1F24'; c.fillRect(0, 0, W, H); } }
+function camPt(r, u, v) { return [r.x + u * r.iw, r.y + v * r.ih]; }
+function pill(c, txt, x, y, a, o = {}) {
+  if (a <= 0) return;
+  const { size = 26, dot = C.teal, bg = 'rgba(10,12,14,0.55)' } = o;
+  c.save(); c.globalAlpha = clamp(a); setFont(c, 600, size, FONT.zh, 2); const tw = c.measureText(txt).width;
+  c.fillStyle = bg; c.beginPath(); rrect(c, x, y - size * 1.4, tw + size * 2.2, size * 1.95, size); c.fill();
+  c.fillStyle = dot; c.beginPath(); c.arc(x + size * 0.95, y - size * 0.42, size * 0.23, 0, TAU); c.fill();
+  c.fillStyle = '#fff'; c.textBaseline = 'middle'; c.textAlign = 'left'; c.fillText(txt, x + size * 1.6, y - size * 0.4);
+  c.restore();
+}
+
 // ───────────── HUD ─────────────
 const CHAP = [[0, '远方'], [T.range, '续航'], [T.space, '空间'], [T.cap, '越野'], [T.mont, '细节'], [T.build, '澎程']];
+let HUD_INK = '255,255,255';
 function hud(t, a = 1) {
   const c = L.c, fin = ease(0.5, 1.1, t) * a * (1 - ease(T.end - 0.2, T.end, t));
   if (fin <= 0) return;
+  const ink = (al) => `rgba(${HUD_INK},${al})`;
   c.save(); c.globalAlpha = fin;
-  label(c, 'XIAOMI SKYNOMAD', 72, 74, { size: 15, weight: 600, track: 6 });
-  label(c, '小米澎程', 72, 100, { size: 16, weight: 500, fam: FONT.zh, track: 4, color: 'rgba(255,255,255,0.7)' });
-  label(c, 'N90 MAX', W - 72, 74, { size: 15, weight: 600, track: 6, align: 'right' });
-  label(c, '2026', W - 72, 100, { size: 15, weight: 500, track: 4, align: 'right', color: 'rgba(255,255,255,0.6)' });
-  // journey progress bar
+  label(c, 'XIAOMI SKYNOMAD', 72, 74, { size: 15, weight: 600, track: 6, color: ink(0.85) });
+  label(c, '小米澎程', 72, 100, { size: 16, weight: 500, fam: FONT.zh, track: 4, color: ink(0.7) });
+  label(c, 'N90 MAX', W - 72, 74, { size: 15, weight: 600, track: 6, align: 'right', color: ink(0.85) });
+  label(c, '2026', W - 72, 100, { size: 15, weight: 500, track: 4, align: 'right', color: ink(0.6) });
   const x0 = 72, x1 = W - 72, y = H - 58;
-  c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(x0, y, x1 - x0, 2);
-  c.fillStyle = C.teal; c.fillRect(x0, y, (x1 - x0) * clamp(t / 15), 2);
+  c.fillStyle = ink(0.25); c.fillRect(x0, y, x1 - x0, 2);
+  c.fillStyle = HUD_INK === '255,255,255' ? C.teal : C.tealDeep; c.fillRect(x0, y, (x1 - x0) * clamp(t / 15), 2);
   CHAP.forEach(([t0, name], i) => {
     const x = x0 + (x1 - x0) * t0 / 15, on = t >= t0 && (i === CHAP.length - 1 || t < CHAP[i + 1][0]);
-    c.fillStyle = on ? C.white : 'rgba(255,255,255,0.45)'; c.fillRect(x, y - 5, 2, 12);
-    label(c, `0${i + 1} ${name}`, x + 8, y - 12, { size: 13, weight: on ? 600 : 400, fam: FONT.zh, track: 2, color: on ? '#fff' : 'rgba(255,255,255,0.5)' });
+    c.fillStyle = on ? ink(1) : ink(0.45); c.fillRect(x, y - 5, 2, 12);
+    label(c, `0${i + 1} ${name}`, x + 8, y - 12, { size: 13, weight: on ? 600 : 400, fam: FONT.zh, track: 2, color: on ? ink(1) : ink(0.5) });
   });
   c.restore();
 }
 
-// ───────────── 01 远方 — horizon opens into the hero shot ─────────────
+// ───────────── 01 远方 — the horizon opens into the grassland at dawn ─────────────
+const INTRO = { u0: 0.505, v0: 0.80, z0: 1.65, u1: 0.5, v1: 0.6, z1: 1.1, hv: 0.815 };
 function sceneIntro(t) {
   L.bg('#000');
   const c = L.c, e = L.e;
-  const gap = E.inOutQuart(inv(0.42, 1.15, t)) * (H + 20);
-  const lw = E.outExpo(inv(0.04, 0.6, t)) * W;
-  if (gap > 0) {
-    c.save(); c.beginPath(); c.rect(0, 540 - gap / 2, W, gap); c.clip();
-    photo(c, 'hero', 0, 0, W, H, { zoom: 1.24 - 0.14 * E.outCubic(inv(0.4, 2.6, t)) });
-    shade(c, 0, 0, 0, H, [[0, 'rgba(0,0,0,0.25)'], [0.5, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.55)']]);
-    shade(c, 0, 0, W * 0.7, 0, [[0, 'rgba(0,0,0,0.55)'], [1, 'rgba(0,0,0,0)']]);
+  const k = E.outCubic(inv(0.42, 2.4, t));
+  const r = cam('intro', lerp(INTRO.u0, INTRO.u1, k), lerp(INTRO.v0, INTRO.v1, k), lerp(INTRO.z0, INTRO.z1, k));
+  const r0 = cam('intro', INTRO.u0, INTRO.v0, INTRO.z0);
+  const hy = r0 ? camPt(r0, 0, INTRO.hv)[1] : 560;           // the photo's horizon at the first frame
+  const p = E.inOutQuart(inv(0.42, 1.2, t)), top = hy * (1 - p), bot = hy + (H - hy) * p;
+  if (p > 0) {
+    c.save(); c.beginPath(); c.rect(0, top, W, bot - top); c.clip();
+    drawCam(c, r);
     c.restore();
-    // warm light leak drifting across
-    const lx = lerp(-300, 900, inv(0.4, 2.2, t));
-    const g = e.createRadialGradient(lx, 160, 10, lx, 160, 900);
-    g.addColorStop(0, `rgba(255,140,60,${0.35 * (1 - inv(1.4, 2.2, t))})`); g.addColorStop(1, 'rgba(255,140,60,0)');
-    e.fillStyle = g; e.fillRect(0, 0, W, H);
+    const sun = e.createRadialGradient(r ? camPt(r, 0.52, INTRO.hv)[0] : 960, r ? camPt(r, 0.52, INTRO.hv)[1] : hy, 10, 960, hy, 700);
+    sun.addColorStop(0, `rgba(255,150,70,${0.22 * (1 - inv(1.2, 2.4, t))})`); sun.addColorStop(1, 'rgba(255,150,70,0)');
+    e.save(); e.beginPath(); e.rect(0, top, W, bot - top); e.clip(); e.fillStyle = sun; e.fillRect(0, 0, W, H); e.restore();
   }
-  // the horizon line (it becomes the letterbox edges)
-  if (lw > 0 && gap < H) {
-    const fade = 1 - inv(0.9, 1.2, t);
-    for (const y of gap > 0 ? [540 - gap / 2, 540 + gap / 2] : [540]) {
+  const lw = E.outExpo(inv(0.04, 0.6, t)) * W, fade = 1 - inv(0.95, 1.25, t);
+  if (lw > 0 && fade > 0) {
+    for (const y of p > 0 ? [top, bot] : [hy]) {
       const gg = c.createLinearGradient(960 - lw / 2, 0, 960 + lw / 2, 0);
       gg.addColorStop(0, 'rgba(255,122,47,0)'); gg.addColorStop(0.3, C.sun); gg.addColorStop(0.5, '#FFF4E8'); gg.addColorStop(0.7, C.teal); gg.addColorStop(1, 'rgba(95,182,170,0)');
       c.save(); c.globalAlpha = fade; c.fillStyle = gg; c.fillRect(960 - lw / 2, y - 1.5, lw, 3); c.restore();
       e.save(); e.globalAlpha = fade; e.fillStyle = gg; e.fillRect(960 - lw / 2, y - 7, lw, 14); e.restore();
     }
-    const sun = e.createRadialGradient(960, 540, 5, 960, 540, 420);
-    sun.addColorStop(0, `rgba(255,170,90,${0.5 * fade * (1 - inv(0.5, 1.2, t))})`); sun.addColorStop(1, 'rgba(255,170,90,0)');
-    e.fillStyle = sun; e.fillRect(0, 0, W, H);
+    if (p < 0.3) {
+      const g = e.createRadialGradient(960, hy, 5, 960, hy, 420);
+      g.addColorStop(0, `rgba(255,170,90,${0.5 * fade * (1 - p / 0.3)})`); g.addColorStop(1, 'rgba(255,170,90,0)');
+      e.fillStyle = g; e.fillRect(0, 0, W, H);
+    }
   }
-  // title with the VO
-  voLine(c, '把家，带去远方', 140, 700, 'vo1', [0, 1, -2, 2, 3, 4, 5], { size: 112, weight: 600, tracking: 6, tOut: T.range - 0.2 });
-  label(c, scramble('HOME, ANYWHERE', inv(vo('vo1', 2), vo('vo1', 2) + 0.6, t), false, 3), 146, 760,
-    { size: 24, weight: 600, track: 12, color: C.tealHi, a: 1 - inv(T.range - 0.2, T.range + 0.1, t) });
+  // title in ink over the bright dawn sky
+  voLine(c, '把家，带去远方', 140, 330, 'vo1', [0, 1, -2, 2, 3, 4, 5], { size: 108, weight: 600, tracking: 6, color: C.ink, tOut: T.range - 0.2 });
+  label(c, scramble('HOME, ANYWHERE', inv(vo('vo1', 2), vo('vo1', 2) + 0.6, t), false, 3), 146, 394,
+    { size: 24, weight: 700, track: 12, color: C.tealDeep, a: 1 - inv(T.range - 0.2, T.range + 0.1, t) });
 }
 
-// ───────────── 02 续航 — the route: 464 km electric, 1705 km in total ─────────────
-const ROUTE = bez([[-60, 860], [260, 800, 420, 700, 700, 740], [980, 780, 1080, 880, 1320, 820], [1560, 760, 1660, 600, 1990, 640]], 40);
+// ───────────── 02 续航 — route along the bridge, then 说走就走 ─────────────
+const ROUTE_UV = [[-0.02, 0.806], [0.12, 0.753], [0.26, 0.701], [0.4, 0.650], [0.55, 0.594], [0.7, 0.540], [0.82, 0.497], [0.95, 0.452]];
 function sceneRange(t) {
   L.bg('#000');
-  const c = L.c, e = L.e, u = t - T.range;
-  const zoom = 1.08 + 0.05 * u + 0.35 * E.inQuad(inv(T.drop, T.space, t));
-  photo(c, 'road', 0, 0, W, H, { zoom, fallback: 'hero' });
-  shade(c, 0, 0, 0, H, [[0, 'rgba(0,0,0,0.35)'], [0.55, 'rgba(0,0,0,0.1)'], [1, 'rgba(0,0,0,0.75)']]);
-  shade(c, 0, 0, W, 0, [[0, 'rgba(0,0,0,0.55)'], [0.6, 'rgba(0,0,0,0)']]);
-  // route: teal while electric (464 / 1705), orange once the range extender takes over
-  const P = new Poly(ROUTE), p = E.inOutCubic(inv(T.range + 0.08, T.drop, t)), split = 464 / 1705;
-  const q = P.L;
-  c.save(); c.setLineDash([2, 10]); c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 2; c.beginPath(); P.trace(c, 0, 1); c.stroke(); c.restore();
-  glowLine(P, 0, Math.min(p, split), C.tealHi, 'rgba(95,182,170,0.9)', 5, 16);
-  if (p > split) glowLine(P, split, p, C.sunHi, 'rgba(255,122,47,0.9)', 5, 16);
-  const head = P.at(q * p);
-  if (p > 0 && p < 1) { e.fillStyle = '#FFFFFF'; e.beginPath(); e.arc(head[0], head[1], 16, 0, TAU); e.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(head[0], head[1], 6, 0, TAU); c.fill(); }
-  // markers
-  const mk = (frac, txt, sub, col, t0) => {
-    const a = ease(t0, t0 + 0.2, t); if (a <= 0) return;
-    const m = P.at(q * frac);
-    c.save(); c.globalAlpha = a; c.strokeStyle = col; c.lineWidth = 2; c.beginPath(); c.arc(m[0], m[1], 9 + 14 * (1 - a), 0, TAU); c.stroke();
-    c.fillStyle = col; c.beginPath(); c.arc(m[0], m[1], 5, 0, TAU); c.fill();
-    c.beginPath(); c.moveTo(m[0], m[1] - 14); c.lineTo(m[0], m[1] - 70); c.stroke(); c.restore();
-    label(c, txt, m[0] + 10, m[1] - 76, { size: 30, weight: 700, fam: FONT.heavy, track: 1, color: '#fff', a });
-    label(c, sub, m[0] + 10, m[1] - 110, { size: 17, weight: 500, fam: FONT.zh, track: 2, color: col, a });
-  };
-  const tSplit = T.range + 0.08 + (T.drop - T.range - 0.08) * 0.43;
-  mk(split, '464 km', 'CLTC 纯电续航', C.tealHi, tSplit);
-  mk(0.999, '1705 km', 'CLTC 综合续航', C.sunHi, T.drop - 0.05);
-  // odometer
-  const val = 1705 * E.inOutCubic(inv(T.range + 0.08, T.drop, t));
-  const punch = 1 + 0.08 * Math.exp(-(t - T.drop) * 9) * (t > T.drop ? 1 : 0);
-  const ox = 140, oy = 960;
-  c.save(); c.translate(ox, oy); c.scale(punch, punch); c.translate(-ox, -oy);
-  label(c, 'CLTC 综合续航', 146, oy - 250, { size: 30, weight: 500, fam: FONT.zh, track: 4, color: 'rgba(255,255,255,0.85)', a: ease(T.range, T.range + 0.3, t) });
-  const wv = odometer(c, Math.round(val * 10) / 10, ox, oy, { size: 250 });
-  label(c, 'km', ox + wv + 18, oy, { size: 80, weight: 700, fam: FONT.heavy, track: 0, color: C.sunHi });
-  c.restore();
-  if (t > T.drop) {                                        // "说走就走" burst: zoom-streaks from the vanishing point
+  const c = L.c, e = L.e;
+  const drop = t >= T.drop;
+  if (!drop) {
+    const r = cam('road', 0.6, 0.52, 1.06 + 0.07 * E.inOutQuad(inv(T.range - 0.2, T.drop, t)));
+    drawCam(c, r);
+    shade(c, 0, 0, W * 0.75, H, [[0, 'rgba(0,0,0,0.55)'], [0.5, 'rgba(0,0,0,0.12)'], [1, 'rgba(0,0,0,0)']]);
+    shade(c, 0, 0, 0, H, [[0.6, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.6)']]);
+    if (r) {
+      const P = new Poly(bez(ROUTE_UV.map(([u, v]) => camPt(r, u, v - 0.012)).reduce((a, p, i) => { if (i === 0) return [p]; const q = a.length ? a[a.length - 1] : p; a.push(p); return a; }, []), 1));
+      const p = E.inOutCubic(inv(T.range + 0.08, T.drop, t)), split = 464 / 1705;
+      c.save(); c.setLineDash([2, 10]); c.strokeStyle = 'rgba(255,255,255,0.4)'; c.lineWidth = 2; c.beginPath(); P.trace(c, 0, 1); c.stroke(); c.restore();
+      glowLine(P, 0, Math.min(p, split), C.tealHi, 'rgba(95,182,170,0.95)', 5, 18);
+      if (p > split) glowLine(P, split, p, C.sunHi, 'rgba(255,122,47,0.95)', 5, 18);
+      const head = P.at(P.L * p);
+      if (p > 0 && p < 1) { e.fillStyle = '#FFFFFF'; e.beginPath(); e.arc(head[0], head[1], 18, 0, TAU); e.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(head[0], head[1], 6, 0, TAU); c.fill(); }
+      const mk = (frac, txt, sub, col, t0, side = 1, stem = 86) => {
+        const a = ease(t0, t0 + 0.2, t); if (a <= 0) return;
+        const m = P.at(P.L * frac);
+        c.save(); c.globalAlpha = a; c.strokeStyle = col; c.lineWidth = 2; c.beginPath(); c.arc(m[0], m[1], 9 + 14 * (1 - a), 0, TAU); c.stroke();
+        c.fillStyle = col; c.beginPath(); c.arc(m[0], m[1], 5, 0, TAU); c.fill();
+        c.beginPath(); c.moveTo(m[0], m[1] - 14); c.lineTo(m[0], m[1] - stem); c.stroke(); c.restore();
+        const ax = side > 0 ? m[0] + 12 : m[0] - 12, al = side > 0 ? 'left' : 'right';
+        label(c, txt, ax, m[1] - stem - 6, { size: 32, weight: 900, fam: FONT.heavy, track: 1, color: '#fff', a, align: al });
+        label(c, sub, ax, m[1] - stem - 42, { size: 18, weight: 600, fam: FONT.zh, track: 2, color: col, a, align: al });
+      };
+      const tSplit = T.range + 0.08 + (T.drop - T.range - 0.08) * 0.42;
+      mk(split, '464 km', 'CLTC 纯电续航', C.tealHi, tSplit, 1, 190);
+      mk(0.999, '1705 km', 'CLTC 综合续航', C.sunHi, T.drop - 0.12, -1);
+    }
+  } else {                                                       // 说走就走: night drive, punch-in along the road
     const k = inv(T.drop, T.space, t);
+    const r = cam('drop', 0.62, 0.55, 1.3 - 0.16 * E.outExpo(inv(0, 0.35, k)) + 0.12 * k);
+    drawCam(c, r);
+    shade(c, 0, 0, W * 0.7, H, [[0, 'rgba(0,0,0,0.6)'], [1, 'rgba(0,0,0,0)']]);
     c.save();
-    for (let i = 0; i < 70; i++) {
-      const a = hash(i * 1.37) * TAU, r0 = 120 + ((hash(i * 3.1) + k * 2.2) % 1) * 1100, len = 60 + 240 * k;
-      const cx = 1320 + Math.cos(a) * r0, cy = 560 + Math.sin(a) * r0 * 0.6;
-      c.strokeStyle = `rgba(255,255,255,${0.15 + 0.25 * hash(i)})`; c.lineWidth = 1.5;
-      c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * len, cy + Math.sin(a) * len * 0.6); c.stroke();
+    const dx = -0.82, dy = 0.57;
+    for (let i = 0; i < 60; i++) {
+      const ox = hash(i * 1.37) * W * 1.4 - W * 0.2, oy = hash(i * 3.1) * H * 1.4 - H * 0.2, sp = 2600 + 3000 * hash(i * 7.7);
+      const d = ((t - T.drop) * sp + hash(i) * 3000) % 3000, len = 80 + 260 * hash(i * 2.1);
+      const x = ox - dx * d * 0.4, y = oy - dy * d * 0.4;
+      c.strokeStyle = `rgba(255,255,255,${(0.1 + 0.2 * hash(i * 5.3)) * (1 - k * 0.5)})`; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(x, y); c.lineTo(x + dx * len, y + dy * len); c.stroke();
     }
     c.restore();
+    voLine(c, '说走就走', 140, 330, 'vo2', [8, 9, 10, 11], { size: 120, weight: 700, tracking: 10, tOut: T.space - 0.1 });
   }
+  // odometer (both halves)
+  const val = 1705 * E.inOutCubic(inv(T.range + 0.08, T.drop, t));
+  const punch = 1 + 0.08 * Math.exp(-(t - T.drop) * 9) * (drop ? 1 : 0);
+  const ox = 140, oy = 960;
+  c.save(); c.translate(ox, oy); c.scale(punch, punch); c.translate(-ox, -oy);
+  label(c, 'CLTC 综合续航', 146, oy - 250, { size: 30, weight: 600, fam: FONT.zh, track: 4, color: 'rgba(255,255,255,0.9)', a: ease(T.range, T.range + 0.3, t) });
+  const wv = odometer(c, Math.round(val * 10) / 10, ox, oy, { size: 250 });
+  label(c, 'km', ox + wv + 18, oy, { size: 80, weight: 900, fam: FONT.heavy, track: 0, color: C.sunHi });
+  c.restore();
 }
 
-// ───────────── 03 空间 — top-view seat layouts, then the cabin photograph ─────────────
+// ───────────── 03 空间 — top-view seat layouts → the cutaway photograph ─────────────
 const SEAT = { s: 1200 / 5285, cx: 1090, cy: 560 };
-function carTop(c, e, a) {                              // top-view body outline, front to the right
+function carTop(c, e, a) {                              // top-view body outline, front to the right (mirrored when drawn)
   const Lp = 5285 * SEAT.s, Wp = 1998 * SEAT.s, x0 = SEAT.cx - Lp / 2, y0 = SEAT.cy - Wp / 2;
   c.save(); c.globalAlpha = a; c.strokeStyle = C.tealHi; c.lineWidth = 2.4;
   c.beginPath(); c.moveTo(x0 + 120, y0); c.lineTo(x0 + Lp - 200, y0); c.bezierCurveTo(x0 + Lp - 40, y0 + 4, x0 + Lp, y0 + 70, x0 + Lp, y0 + Wp / 2);
   c.bezierCurveTo(x0 + Lp, y0 + Wp - 70, x0 + Lp - 40, y0 + Wp - 4, x0 + Lp - 200, y0 + Wp); c.lineTo(x0 + 120, y0 + Wp);
   c.bezierCurveTo(x0 + 20, y0 + Wp - 4, x0, y0 + Wp - 60, x0, y0 + Wp / 2); c.bezierCurveTo(x0, y0 + 60, x0 + 20, y0 + 4, x0 + 120, y0); c.stroke();
   c.lineWidth = 1.2; c.strokeStyle = 'rgba(155,220,210,0.55)';
-  c.beginPath(); c.moveTo(x0 + Lp - 330, y0 + 30); c.quadraticCurveTo(x0 + Lp - 260, y0 + Wp / 2, x0 + Lp - 330, y0 + Wp - 30);   // windscreen
-  c.moveTo(x0 + 70, y0 + 40); c.quadraticCurveTo(x0 + 40, y0 + Wp / 2, x0 + 70, y0 + Wp - 40);                                   // tailgate
+  c.beginPath(); c.moveTo(x0 + Lp - 330, y0 + 30); c.quadraticCurveTo(x0 + Lp - 260, y0 + Wp / 2, x0 + Lp - 330, y0 + Wp - 30);
+  c.moveTo(x0 + 70, y0 + 40); c.quadraticCurveTo(x0 + 40, y0 + Wp / 2, x0 + 70, y0 + Wp - 40);
   c.stroke();
   c.setLineDash([6, 6]);
   for (const wx of [x0 + 210, x0 + Lp - 330]) for (const wy of [y0 - 6, y0 + Wp - 26]) { c.strokeRect(wx, wy, 150, 32); }
   c.setLineDash([]);
-  c.fillStyle = C.tealHi; c.fillRect(x0 + Lp - 312, y0 - 18, 34, 14); c.fillRect(x0 + Lp - 312, y0 + Wp + 4, 34, 14);                // mirrors
+  c.fillStyle = C.tealHi; c.fillRect(x0 + Lp - 312, y0 - 18, 34, 14); c.fillRect(x0 + Lp - 312, y0 + Wp + 4, 34, 14);
   c.restore();
   e.save(); e.globalAlpha = a * 0.5; e.strokeStyle = C.teal; e.lineWidth = 8; e.strokeRect(x0 + 10, y0 + 10, Lp - 20, Wp - 20); e.restore();
   return { x0, y0, Lp, Wp };
 }
-// seat state: x, y, w (cushion length), h, rec (recline 0..1), flat (0..1)
 const SEATS0 = [
-  { x: 1400, y: 490 }, { x: 1400, y: 630 },                       // row 1
-  { x: 1180, y: 490 }, { x: 1180, y: 630 },                       // row 2 captain chairs
-  { x: 940, y: 470, n: 1 }, { x: 940, y: 560, n: 1 }, { x: 940, y: 650, n: 1 },   // row 3 bench
+  { x: 1400, y: 490 }, { x: 1400, y: 630 },
+  { x: 1180, y: 490 }, { x: 1180, y: 630 },
+  { x: 940, y: 470, n: 1 }, { x: 940, y: 560, n: 1 }, { x: 940, y: 650, n: 1 },
 ];
-function seatLayout(k) {                                          // target seat states per layout
+function seatLayout(k) {
   return SEATS0.map((s, i) => {
     const r = { x: s.x, y: s.y, w: s.n ? 92 : 104, h: s.n ? 78 : 100, rec: 0, flat: 0 };
     if (k === 1) { if (i === 2 || i === 3) { r.x -= 70; r.w = 170; r.rec = 1; } if (i >= 4) r.flat = 1; }
@@ -276,12 +307,11 @@ function seatLayout(k) {                                          // target seat
     return r;
   });
 }
+function layoutIndex(t) { let k = 0; for (let i = 0; i < 4; i++) if (t >= T.space + i * BEAT) k = i; return k; }
 function drawSeats(c, e, t) {
-  const tk = [T.space, T.space + BEAT, T.space + 2 * BEAT, T.space + 3 * BEAT];
-  let k = 0; for (let i = 0; i < 4; i++) if (t >= tk[i]) k = i;
-  const from = seatLayout(Math.max(0, k - 1)), to = seatLayout(k), p = k === 0 ? 1 : spring(t - tk[k], 3.2, 0.62);
+  const k = layoutIndex(t), tk = T.space + k * BEAT;
+  const from = seatLayout(Math.max(0, k - 1)), to = seatLayout(k), p = k === 0 ? 1 : spring(t - tk, 3.2, 0.62);
   const S = from.map((f, i) => { const g = to[i], o = {}; for (const key in g) o[key] = lerp(f[key], g[key], p); return o; });
-  // bed (layout 2) — rows 2 & 3 become one mattress
   const bed = k === 2 ? clamp(p) : (k === 3 ? 1 - clamp(p) : 0);
   if (bed > 0.01) {
     c.save(); c.globalAlpha = bed; c.fillStyle = 'rgba(95,182,170,0.18)'; c.strokeStyle = C.tealHi; c.lineWidth = 2;
@@ -291,242 +321,230 @@ function drawSeats(c, e, t) {
   }
   S.forEach((s, i) => {
     const a = 1 - s.flat * 0.75;
-    c.save(); c.globalAlpha = a * (1 - bed * (i >= 2 ? 0.85 : 0));
+    c.save(); c.globalAlpha *= a * (1 - bed * (i >= 2 ? 0.85 : 0));
     c.fillStyle = s.flat > 0.5 ? 'rgba(95,182,170,0.12)' : 'rgba(255,255,255,0.10)'; c.strokeStyle = s.flat > 0.5 ? 'rgba(155,220,210,0.6)' : '#FFFFFF'; c.lineWidth = 2;
     c.beginPath(); rrect(c, s.x - s.w / 2, s.y - s.h / 2, s.w, s.h, 16); c.fill(); c.stroke();
-    // backrest
     const bw = 20 + 26 * s.rec;
     c.beginPath(); rrect(c, s.x - s.w / 2 - bw + 6, s.y - s.h / 2 + 4, bw, s.h - 8, 8); c.stroke();
     if (s.rec > 0.05) { c.globalAlpha *= s.rec; c.beginPath(); rrect(c, s.x + s.w / 2 - 6, s.y - s.h / 2 + 14, 40 * s.rec, s.h - 28, 8); c.stroke(); }
     c.restore();
   });
-  // mobile island with fridge (layout 3)
   const isl = k === 3 ? clamp(p) : 0, ix = lerp(1400, 1180, isl), iy = 560;
   c.save(); c.strokeStyle = k === 3 ? C.sunHi : 'rgba(255,255,255,0.6)'; c.lineWidth = 2;
   c.beginPath(); rrect(c, ix - 40, iy - 20, 80, 40, 10); c.stroke();
-  c.setLineDash([4, 6]); c.strokeStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.moveTo(1120, iy); c.lineTo(1450, iy); c.stroke(); c.setLineDash([]);  // rail
-  if (isl > 0) { c.fillStyle = C.sunHi; c.globalAlpha = isl; setFont(c, 600, 20, FONT.en); c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('9 L', ix, iy + 1);
-    e.fillStyle = C.sun; e.globalAlpha = isl * 0.6; e.fillRect(ix - 44, iy - 24, 88, 48); }
+  c.setLineDash([4, 6]); c.strokeStyle = 'rgba(255,255,255,0.35)'; c.beginPath(); c.moveTo(1120, iy); c.lineTo(1450, iy); c.stroke(); c.setLineDash([]);
+  if (isl > 0) { e.fillStyle = C.sun; e.globalAlpha = isl * 0.6; e.fillRect(ix - 44, iy - 24, 88, 48); e.globalAlpha = 1; }
   c.restore();
-  return k;
+  return { k, isl, ix, iy };
 }
+const CUT = { u: 0.545, v: 0.65, carLen: 0.72 };                  // car in the cutaway photo (12.jpg)
 function sceneSpace(t) {
   L.bg('#07080A');
   const c = L.c, e = L.e, u = t - T.space;
+  const rev = E.inOutCubic(inv(T.photoIn + 0.08, T.photoIn + 0.6, t));   // mask grows to full frame
+  const fadeIn = ease(T.photoIn - 0.06, T.photoIn + 0.12, t);
   grid(c, { alpha: 0.8, offX: -u * 30, minor: 0.025, major: 0.05, cross: true });
-  const zoomIn = E.inOutCubic(inv(T.photoIn - 0.05, T.photoIn + 0.55, t));
-  L.save(); L.translate(SEAT.cx, SEAT.cy); L.scale(1 + 2.2 * zoomIn); L.translate(-SEAT.cx, -SEAT.cy);
-  const box = carTop(c, e, ease(T.space - 0.05, T.space + 0.25, t));
-  const k = drawSeats(c, e, t);
-  // 2760 mm cabin dimension
-  const dp = ease(T.space + 0.2, T.space + 0.6, t);
-  if (dp > 0) {
-    const y = box.y0 + box.Wp + 46, xa = 880, xb = 1460;
-    c.save(); c.globalAlpha = dp * (1 - zoomIn); c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1.2;
-    c.beginPath(); c.moveTo(lerp(1170, xa, dp), y); c.lineTo(lerp(1170, xb, dp), y); c.moveTo(xa, y - 8); c.lineTo(xa, y + 8); c.moveTo(xb, y - 8); c.lineTo(xb, y + 8); c.stroke();
-    c.restore();
-    label(c, '舱内纵向空间 2760 mm', 1170, y + 34, { size: 18, weight: 500, fam: FONT.zh, align: 'center', track: 2, a: dp * (1 - zoomIn) });
+  // the diagram (mirrored: nose to the left, like the photograph)
+  const dia = 1 - ease(T.photoIn + 0.05, T.photoIn + 0.3, t);
+  let seats = { k: 0, isl: 0, ix: 1400, iy: 560 };
+  if (dia > 0) {
+    L.save(); L.alpha(dia); L.translate(2 * SEAT.cx, 0); L.scale(-1, 1);
+    const box = carTop(c, e, ease(T.space - 0.05, T.space + 0.25, t));
+    seats = drawSeats(c, e, t);
+    L.restore();
+    if (seats.isl > 0) { c.save(); c.globalAlpha = seats.isl * dia; setFont(c, 700, 20, FONT.en); c.fillStyle = C.sunHi; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('9 L', 2 * SEAT.cx - seats.ix, seats.iy + 1); c.restore(); }
+    const dp = ease(T.space + 0.2, T.space + 0.6, t);
+    if (dp > 0) {
+      const y = box.y0 + box.Wp + 46, xa = 2 * SEAT.cx - 1460, xb = 2 * SEAT.cx - 880;
+      c.save(); c.globalAlpha = dp * dia; c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1.2;
+      c.beginPath(); c.moveTo(lerp((xa + xb) / 2, xa, dp), y); c.lineTo(lerp((xa + xb) / 2, xb, dp), y); c.moveTo(xa, y - 8); c.lineTo(xa, y + 8); c.moveTo(xb, y - 8); c.lineTo(xb, y + 8); c.stroke();
+      c.restore();
+      label(c, '舱内纵向空间 2760 mm', (xa + xb) / 2, y + 34, { size: 18, weight: 500, fam: FONT.zh, align: 'center', track: 2, a: dp * dia });
+    }
   }
-  L.restore();
   // left column: layout counter + name
-  const out = 1 - zoomIn;
-  if (out > 0.01) {
-    c.save(); c.globalAlpha = out;
+  if (dia > 0.01) {
+    c.save(); c.globalAlpha = dia;
     const cnt = 1 + 10 * E.inOutQuad(inv(T.space, T.photoIn, t));
-    const wv = odometer(c, cnt, 140, 560, { size: 200, digits: 2 });
+    odometer(c, cnt, 140, 560, { size: 200, digits: 2 });
     label(c, '种空间布局', 150, 620, { size: 40, weight: 600, fam: FONT.zh, track: 4, color: '#fff' });
     label(c, 'RECONFIGURABLE CABIN', 152, 660, { size: 18, weight: 600, track: 8, color: C.tealHi });
-    const nm = LAYOUTS[k], since = t - (T.space + k * BEAT);
+    const k = seats.k, since = t - (T.space + k * BEAT);
     c.fillStyle = C.teal; c.fillRect(150, 712, 46 * ease(0, 0.2, since, E.outCubic), 3);
-    label(c, scramble(nm, inv(0, 0.18, since), true, k), 150, 760, { size: 34, weight: 600, fam: FONT.zh, track: 3, color: '#fff' });
+    label(c, scramble(LAYOUTS[k], inv(0, 0.18, since), true, k), 150, 760, { size: 34, weight: 600, fam: FONT.zh, track: 3, color: '#fff' });
     label(c, '最大储物空间 1831 L', 150, 810, { size: 20, weight: 500, fam: FONT.zh, track: 2, color: 'rgba(255,255,255,0.65)', a: ease(T.space + 0.4, T.space + 0.7, t) });
     c.restore();
   }
-  // cabin photograph grows out of the car outline
-  if (zoomIn > 0) {
-    const r = E.inOutCubic(inv(T.photoIn + 0.05, T.photoIn + 0.5, t));
-    const w = lerp(500, W + 40, r), h = lerp(300, H + 40, r), x = SEAT.cx - w / 2 + (960 - SEAT.cx) * r, y = SEAT.cy - h / 2 + (540 - SEAT.cy) * r;
-    c.save(); c.beginPath(); rrect(c, x, y, w, h, lerp(40, 0, r)); c.clip();
-    photo(c, 'interior', 0, 0, W, H, { zoom: 1.18 - 0.1 * E.outCubic(inv(T.photoIn, T.cap, t)) });
-    shade(c, 0, 0, 0, H, [[0.5, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.7)']]);
+  // match cut: the cutaway photograph lands on the diagram, then opens to full frame
+  if (fadeIn > 0) {
+    const img = ph('cutaway');
+    const zMatch = img ? (1200 / CUT.carLen) / (img.naturalWidth * Math.max(W / img.naturalWidth, H / img.naturalHeight)) : 1;
+    const q = E.inOutCubic(inv(T.photoIn + 0.08, T.photoIn + 0.7, t)), drift = 0.03 * inv(T.photoIn, T.cap, t);
+    const r = cam('cutaway', lerp(CUT.u, 0.52, q), lerp(CUT.v, 0.6, q), lerp(zMatch, 1.04 + drift, q), lerp(SEAT.cx, 960, q), lerp(SEAT.cy, 540, q), false);
+    const bw = lerp(1240, W + 40, rev), bh = lerp(470, H + 40, rev), bx = lerp(SEAT.cx, 960, rev) - bw / 2, by = lerp(SEAT.cy, 540, rev) - bh / 2;
+    c.save(); c.globalAlpha = fadeIn; c.beginPath(); rrect(c, bx, by, bw, bh, lerp(90, 0, rev)); c.clip();
+    drawCam(c, r);
+    shade(c, 0, 0, 0, H, [[0, 'rgba(0,0,0,0.35)'], [0.35, 'rgba(0,0,0,0)'], [0.75, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.45)']]);
     c.restore();
-    e.save(); e.fillStyle = '#000'; e.fillRect(x, y, w, h); e.restore();
-    const chips = [['零重力座椅', 0.25], ['2+2+3 大七座', 0.37], ['移动岛台 · 9 L 冰箱', 0.49]];
-    chips.forEach(([txt, d], i) => {
-      const a = ease(T.photoIn + d, T.photoIn + d + 0.18, t, E.outBack);
-      if (a <= 0) return;
-      c.save(); c.globalAlpha = clamp(a); setFont(c, 600, 26, FONT.zh, 2); const tw = c.measureText(txt).width;
-      const bx = 140 + i * 0, by = 780 + i * 64;
-      c.fillStyle = 'rgba(10,12,14,0.55)'; c.beginPath(); rrect(c, bx, by - 36, tw + 56, 50, 25); c.fill();
-      c.fillStyle = C.teal; c.beginPath(); c.arc(bx + 24, by - 11, 6, 0, TAU); c.fill();
-      c.fillStyle = '#fff'; c.textBaseline = 'middle'; c.fillText(txt, bx + 42, by - 10);
-      c.restore();
-    });
+    e.save(); e.globalAlpha = fadeIn; e.fillStyle = '#000'; e.fillRect(bx, by, bw, bh); e.restore();
+    if (rev < 1) { c.save(); c.strokeStyle = `rgba(155,220,210,${0.9 * (1 - rev)})`; c.lineWidth = 2; c.beginPath(); rrect(c, bx, by, bw, bh, lerp(90, 0, rev)); c.stroke(); c.restore(); }
+    [['零重力座椅', 0.3], ['2+2+3 大七座', 0.42], ['移动岛台 · 9 L 冰箱', 0.54]].forEach(([txt, d], i) =>
+      pill(c, txt, 140, 820 + i * 66, ease(T.photoIn + d, T.photoIn + d + 0.18, t, E.outBack)));
   }
   voLine(c, '随心而变', 140, 300, 'vo3', [8, 9, 10, 11], { size: 96, weight: 700, tracking: 6, tOut: T.cap - 0.15 });
 }
 
-// ───────────── 04 越野 — the water line rises to 750 mm ─────────────
+// ───────────── 04 越野 — the water rises to 750 mm on the car itself ─────────────
+const PROF = { ground: 0.705, roof: 0.40, nose: 0.19 };
 function sceneCap(t) {
   L.bg('#000');
   const c = L.c, e = L.e, u = t - T.cap;
-  c.save(); c.translate(960, 540); c.rotate(0.012 * E.outCubic(inv(0, 1.8, u))); c.translate(-960, -540);
-  photo(c, 'offroad', 0, 0, W, H, { zoom: 1.12 + 0.1 * E.outQuad(inv(0, 1.9, u)), fallback: 'hero' });
-  c.restore();
-  shade(c, 0, 0, W, 0, [[0, 'rgba(0,0,0,0.6)'], [0.5, 'rgba(0,0,0,0.1)'], [1, 'rgba(0,0,0,0.45)']]);
-  // gauge (right) + rising water across the frame
-  const lvl = 750 * E.outCubic(inv(T.cap + 0.15, T.cap + 1.1, t));
-  const gx = 1700, gy0 = 900, gy1 = 300, mm = y => lerp(gy0, gy1, y / 800);
-  const wy = mm(lvl);
-  const wg = c.createLinearGradient(0, wy, 0, H); wg.addColorStop(0, 'rgba(95,182,170,0.30)'); wg.addColorStop(1, 'rgba(46,107,102,0.55)');
-  c.fillStyle = wg; c.fillRect(0, wy, W, H - wy);
-  const wave = (x) => wy + Math.sin(x * 0.012 + u * 7) * 3;
+  const r = cam('profile', 0.5, 0.56, 1.1 + 0.08 * E.outQuad(inv(0, 1.9, u)));
+  drawCam(c, r);
+  shade(c, 0, 0, 0, H, [[0, 'rgba(0,0,0,0.35)'], [0.3, 'rgba(0,0,0,0)'], [0.8, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.5)']]);
+  if (!r) return;
+  const gY = camPt(r, 0, PROF.ground)[1], roofY = camPt(r, 0, PROF.roof)[1];
+  const lvl = 750 * E.outCubic(inv(T.cap + 0.12, T.cap + 1.05, t));
+  const wy = gY - (gY - roofY) * lvl / 1825;
+  const wyDraw = lerp(H + 20, wy, clamp(lvl / 750 * 1.0));
+  const wave = (x) => wyDraw + Math.sin(x * 0.011 + u * 7) * 3 + Math.sin(x * 0.027 - u * 5) * 1.5;
+  c.save(); c.beginPath(); c.moveTo(0, H); for (let x = 0; x <= W; x += 12) c.lineTo(x, wave(x)); c.lineTo(W, H); c.closePath();
+  const wg = c.createLinearGradient(0, wyDraw, 0, H); wg.addColorStop(0, 'rgba(95,182,170,0.34)'); wg.addColorStop(1, 'rgba(30,80,78,0.62)');
+  c.fillStyle = wg; c.fill(); c.restore();
   c.save(); c.strokeStyle = C.tealHi; c.lineWidth = 2.5; c.beginPath(); for (let x = 0; x <= W; x += 12) x ? c.lineTo(x, wave(x)) : c.moveTo(x, wave(x)); c.stroke(); c.restore();
   e.save(); e.strokeStyle = C.teal; e.lineWidth = 12; e.beginPath(); for (let x = 0; x <= W; x += 24) x ? e.lineTo(x, wave(x)) : e.moveTo(x, wave(x)); e.stroke(); e.restore();
-  c.save(); c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(gx, gy0); c.lineTo(gx, gy1);
-  for (let v = 0; v <= 800; v += 50) { const y = mm(v), len = v % 200 === 0 ? 22 : 10; c.moveTo(gx, y); c.lineTo(gx - len, y); }
-  c.stroke(); c.restore();
-  for (let v = 0; v <= 800; v += 200) label(c, String(v), gx + 14, mm(v) + 6, { size: 16, weight: 500, color: 'rgba(255,255,255,0.7)', track: 1 });
-  c.fillStyle = C.tealHi; c.fillRect(gx - 5, wy, 10, gy0 - wy);
-  // numbers
+  // dimension on the car's nose: ground → water line
+  const dx = camPt(r, PROF.nose, 0)[0] - 46, da = ease(T.cap + 0.2, T.cap + 0.4, t);
+  if (da > 0) {
+    c.save(); c.globalAlpha = da; c.strokeStyle = '#fff'; c.lineWidth = 1.6;
+    c.beginPath(); c.moveTo(dx, gY); c.lineTo(dx, wyDraw); c.moveTo(dx - 10, gY); c.lineTo(dx + 10, gY); c.moveTo(dx - 10, wyDraw); c.lineTo(dx + 10, wyDraw); c.stroke(); c.restore();
+    label(c, `${Math.round(lvl)} mm`, dx - 16, (gY + wyDraw) / 2 + 8, { size: 22, weight: 700, fam: FONT.heavy, align: 'right', track: 1, color: '#fff', a: da });
+  }
+  // number block (top-right, over the dark ridgeline)
   const a = ease(T.cap + 0.1, T.cap + 0.35, t);
   c.save(); c.globalAlpha = a;
-  label(c, '最大涉水深度', 1320, 596, { size: 26, weight: 500, fam: FONT.zh, track: 3, color: 'rgba(255,255,255,0.9)' });
-  const wv = odometer(c, lvl, 1320, 760, { size: 160, digits: 3 });
-  label(c, 'mm', 1320 + wv + 12, 760, { size: 54, weight: 700, fam: FONT.heavy, track: 0, color: C.tealHi });
+  label(c, '最大涉水深度', 1300, 170, { size: 26, weight: 600, fam: FONT.zh, track: 3, color: 'rgba(255,255,255,0.92)' });
+  const wv = odometer(c, lvl, 1300, 330, { size: 150, digits: 3 });
+  label(c, 'mm', 1300 + wv + 12, 330, { size: 52, weight: 900, fam: FONT.heavy, track: 0, color: C.tealHi });
   c.restore();
-  // chips (8ths)
-  [['双电机四驱', 0.1], ['0–100 km/h 5.9 s', 0.35]].forEach(([txt, d], i) => {
-    const p = ease(T.cap + d, T.cap + d + 0.22, t, E.outExpo);
-    if (p <= 0) return;
-    c.save(); c.globalAlpha = p; c.translate((1 - p) * -60, 0);
-    setFont(c, 600, 30, FONT.zh, 2); const tw = c.measureText(txt).width;
-    c.fillStyle = C.teal; c.fillRect(140, 640 + i * 70, 4, 40);
-    c.fillStyle = '#fff'; c.textBaseline = 'middle'; c.fillText(txt, 160, 661 + i * 70);
-    c.restore();
-  });
-  voLine(c, '无惧山海', 140, 520, 'vo4', [4, 5, 6, 7], { size: 128, weight: 700, tracking: 8, tOut: T.mont - 0.12 });
+  [['双电机四驱', 0.12], ['0–100 km/h 5.9 s', 0.36]].forEach(([txt, d], i) =>
+    pill(c, txt, 140, 470 + i * 70, ease(T.cap + d, T.cap + d + 0.22, t, E.outBack)));
+  voLine(c, '无惧山海', 140, 300, 'vo4', [4, 5, 6, 7], { size: 128, weight: 700, tracking: 8, tOut: T.mont - 0.12 });
 }
 
 // ───────────── 05 细节 — eight cuts on the eighth notes ─────────────
 function sceneMont(t) {
   L.bg('#000');
-  const c = L.c, e = L.e, u = t - T.mont, step = BEAT / 2;
+  const c = L.c, u = t - T.mont, step = BEAT / 2;
   const k = Math.min(7, Math.floor(u / step)), lu = u - k * step, p = inv(0, step * 0.55, lu);
   const [key, name, sub] = MONT[k], prev = MONT[Math.max(0, k - 1)][0];
-  const draw = (kk, z = 1, dx = 0, dy = 0) => photo(c, kk, dx, dy, W, H, { zoom: z * 1.08, fallback: 'hero' });
+  const F = MONT_FOCUS;
+  const draw = (kk, z = 1, dx = 0, dy = 0) => { const f = F[kk] || [0.5, 0.5]; const r = cam(kk, f[0], f[1], z * 1.06, 960 + dx, 540 + dy); drawCam(c, r); };
   const style = k % 4;
-  if (k === 0) { draw(key, 1.25 - 0.17 * E.outExpo(p)); }
-  else if (style === 1) {                                     // split halves slide in opposite ways
+  if (k === 0) { draw(key, 1.22 - 0.16 * E.outExpo(p)); }
+  else if (k < 3) {                                           // colour swaps: same car, new paint — a hard cut with a push
+    draw(key, 1.1 - 0.06 * E.outExpo(p), (1 - E.outExpo(p)) * 60, 0);
+  } else if (style === 3) {                                   // split halves
     draw(prev, 1.02);
     c.save(); c.beginPath(); c.rect(0, 0, W / 2, H); c.clip(); c.translate(0, (1 - E.outExpo(p)) * -H); draw(key); c.restore();
     c.save(); c.beginPath(); c.rect(W / 2, 0, W / 2, H); c.clip(); c.translate(0, (1 - E.outExpo(p)) * H); draw(key); c.restore();
-  } else if (style === 2) {                                   // iris
+  } else if (style === 0) {                                   // iris
     draw(prev, 1.04);
     c.save(); c.beginPath(); c.arc(960, 540, E.outExpo(p) * 1150, 0, TAU); c.clip(); draw(key, 1.15 - 0.1 * E.outExpo(p)); c.restore();
-  } else if (style === 3) {                                   // blinds
+  } else if (style === 1) {                                   // blinds
     draw(prev, 1.02);
     for (let b = 0; b < 6; b++) { const q = E.outExpo(inv(b * 0.08, b * 0.08 + 0.6, p)); c.save(); c.beginPath(); c.rect(0, b * H / 6, W * q, H / 6 + 1); c.clip(); draw(key); c.restore(); }
   } else {                                                    // diagonal push
     draw(prev, 1.02, -E.outExpo(p) * 200, 0);
     c.save(); c.beginPath(); const x = lerp(W + 600, -600, E.outExpo(p)); c.moveTo(x, 0); c.lineTo(W + 700, 0); c.lineTo(W + 700, H); c.lineTo(x - 500, H); c.closePath(); c.clip(); draw(key, 1.08 - 0.04 * p); c.restore();
   }
-  shade(c, 0, 0, 0, H, [[0.55, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.72)']]);
-  // caption
+  shade(c, 0, 0, 0, H, [[0.55, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.75)']]);
   const cp = E.outExpo(inv(0.02, 0.2, lu));
-  c.save(); c.beginPath(); c.rect(120, 820, 1400, 150); c.clip();
-  c.translate(0, (1 - cp) * 90);
+  c.save(); c.beginPath(); c.rect(120, 820, 1400, 150); c.clip(); c.translate(0, (1 - cp) * 90);
   label(c, name, 140, 900, { size: 52, weight: 700, fam: FONT.zh, track: 3, color: '#fff' });
-  label(c, sub, 144, 944, { size: 20, weight: 600, track: 6, color: C.tealHi });
+  label(c, sub, 144, 944, { size: 20, weight: 600, fam: FONT.zh, track: 5, color: C.tealHi });
   c.restore();
-  label(c, `${String(k + 1).padStart(2, '0')} / 08`, W - 140, 900, { size: 22, weight: 600, track: 4, align: 'right', color: 'rgba(255,255,255,0.8)' });
-  // flash frame on every cut
-  const fl = Math.exp(-lu * 30) * (k > 0 ? 0.35 : 0);
+  label(c, `${String(k + 1).padStart(2, '0')} / 08`, W - 140, 900, { size: 22, weight: 600, track: 4, align: 'right', color: 'rgba(255,255,255,0.85)' });
+  const fl = Math.exp(-lu * 30) * (k > 0 ? 0.3 : 0);
   if (fl > 0.01) { c.fillStyle = `rgba(255,255,255,${fl})`; c.fillRect(0, 0, W, H); }
 }
+const MONT_FOCUS = { detail1: [0.5, 0.55], detail2: [0.5, 0.55], detail3: [0.55, 0.5], detail4: [0.62, 0.5], detail5: [0.4, 0.5], detail6: [0.55, 0.45], detail7: [0.55, 0.55], detail8: [0.6, 0.55] };
 
-// ───────────── 06 澎程 — slow down, the name arrives ─────────────
+// ───────────── 06 澎程 — dusk, the name arrives ─────────────
 function sceneBuild(t) {
   L.bg('#000');
-  const c = L.c, e = L.e, u = t - T.build;
-  photo(c, 'side', 0, 0, W, H, { zoom: 1.1 - 0.05 * E.outQuad(inv(0, 2, u)), fallback: 'hero' });
-  shade(c, 0, 0, 0, H, [[0, 'rgba(0,0,0,0.55)'], [0.45, 'rgba(0,0,0,0.25)'], [1, 'rgba(0,0,0,0.8)']]);
-  // giant outlined 澎程 drifting
-  c.save(); c.globalAlpha = 0.22 * ease(0, 0.4, u); setFont(c, 700, 560, FONT.zh, 20); c.strokeStyle = '#fff'; c.lineWidth = 2; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.strokeText('澎程', 960 - 60 * u, 470); c.restore();
-  voLine(c, '小米澎程', 960, 640, 'vo5', [0, 1, 2, 3], { size: 150, weight: 700, tracking: 18, align: 'center', tOut: T.end - 0.25 });
-  // the journey line returns and charges up
+  const c = L.c, u = t - T.build;
+  drawCam(c, cam('side', 0.5, 0.62, 1.06 + 0.05 * E.outQuad(inv(0, 2, u))));
+  c.fillStyle = 'rgba(0,0,0,0.32)'; c.fillRect(0, 0, W, H);
+  shade(c, 0, 0, 0, H, [[0, 'rgba(0,0,0,0.45)'], [0.5, 'rgba(0,0,0,0.05)'], [1, 'rgba(0,0,0,0.55)']]);
+  c.save(); c.globalAlpha = 0.28 * ease(0, 0.4, u); setFont(c, 700, 560, FONT.zh, 20); c.strokeStyle = '#fff'; c.lineWidth = 2; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.strokeText('澎程', 960 - 60 * u, 420); c.restore();
+  voLine(c, '小米澎程', 960, 560, 'vo5', [0, 1, 2, 3], { size: 150, weight: 700, tracking: 18, align: 'center', tOut: T.end - 0.25 });
   const p = E.inOutCubic(inv(T.build + 0.1, T.end, t));
-  const P = [[160, 760], [1760, 760]];
-  glowLine(P, 0.5 - p / 2, 0.5 + p / 2, '#FFFFFF', 'rgba(95,182,170,1)', 3, 14);
+  glowLine([[160, 640], [1760, 640]], 0.5 - p / 2, 0.5 + p / 2, '#FFFFFF', 'rgba(95,182,170,1)', 3, 14);
 }
 
-// ───────────── 07 END CARD ─────────────
+// ───────────── 07 END CARD — light, ink type beside the hero ─────────────
 function sceneEnd(t) {
-  L.bg('#000');
+  L.bg('#F2F2F0');
   const c = L.c, e = L.e, u = t - T.end;
-  photo(c, 'hero', 0, 0, W, H, { zoom: 1.06 - 0.04 * E.outCubic(inv(0, 1.8, u)) });
-  shade(c, 0, 0, W, 0, [[0, 'rgba(0,0,0,0.78)'], [0.55, 'rgba(0,0,0,0.25)'], [1, 'rgba(0,0,0,0.1)']]);
-  shade(c, 0, 0, 0, H, [[0.5, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,0.6)']]);
+  drawCam(c, cam('hero', 0.56, 0.5, 1.1 - 0.05 * E.outCubic(inv(0, 1.8, u))));
+  shade(c, 0, 0, W, 0, [[0, 'rgba(242,242,240,0.92)'], [0.38, 'rgba(242,242,240,0.55)'], [0.62, 'rgba(242,242,240,0)']]);
   const r = (d, dur = 0.45) => E.glide(inv(d, d + dur, u));
-  // title
   c.save(); const a1 = r(0.02); c.globalAlpha = a1; c.translate(0, (1 - a1) * 30);
-  setFont(c, 700, 104, FONT.zh, 8); c.fillStyle = '#fff'; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText('小米澎程', 140, 520);
-  const w1 = textW(c, '小米澎程', 700, 104, FONT.zh, 8);
-  setFont(c, 900, 104, FONT.heavy, 2); c.fillText('N90 Max', 140 + w1 + 36, 520);
+  setFont(c, 700, 100, FONT.zh, 8); c.fillStyle = C.ink; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText('小米澎程', 140, 470);
+  setFont(c, 900, 100, FONT.heavy, 2); c.fillText('N90 Max', 140, 590);
   c.restore();
-  // signature underline (the journey line)
   const lp = r(0.1, 0.5);
-  c.fillStyle = C.teal; c.fillRect(140, 556, 560 * lp, 4); e.fillStyle = C.teal; e.fillRect(140, 550, 560 * lp, 14);
-  voLine(c, '澎湃每一程', 140, 660, 'vo6', [0, 1, 2, 3, 4], { size: 64, weight: 600, tracking: 10, color: C.tealHi });
+  c.fillStyle = C.teal; c.fillRect(140, 628, 520 * lp, 5);
+  voLine(c, '澎湃每一程', 140, 730, 'vo6', [0, 1, 2, 3, 4], { size: 62, weight: 600, tracking: 10, color: C.tealDeep });
   const a3 = r(0.55);
-  label(c, '上市售价', 144, 760, { size: 20, weight: 500, fam: FONT.zh, track: 3, color: 'rgba(255,255,255,0.7)', a: a3 });
+  label(c, '上市售价', 144, 820, { size: 20, weight: 500, fam: FONT.zh, track: 3, color: 'rgba(10,11,13,0.6)', a: a3 });
   c.save(); c.globalAlpha = a3; c.translate(0, (1 - a3) * 20);
-  setFont(c, 900, 64, FONT.heavy, 0); c.fillStyle = '#fff'; c.fillText('26.99', 140, 840);
+  setFont(c, 900, 64, FONT.heavy, 0); c.fillStyle = C.ink; c.fillText('26.99', 140, 900);
   const w2 = textW(c, '26.99', 900, 64, FONT.heavy, 0);
-  setFont(c, 600, 30, FONT.zh, 2); c.fillText('万元起', 140 + w2 + 14, 838);
+  setFont(c, 600, 30, FONT.zh, 2); c.fillText('万元起', 140 + w2 + 14, 898);
   c.restore();
-  label(c, 'xiaomiev.com', 144, 900, { size: 20, weight: 500, track: 3, color: 'rgba(255,255,255,0.6)', a: r(0.7) });
-  label(c, 'XIAOMI SKYNOMAD', 72, 74, { size: 15, weight: 600, track: 6, a: r(0.3) });
+  label(c, 'xiaomiev.com', 144, 958, { size: 20, weight: 600, track: 3, color: 'rgba(10,11,13,0.55)', a: r(0.7) });
+  label(c, 'XIAOMI SKYNOMAD', 72, 74, { size: 15, weight: 600, track: 6, color: 'rgba(10,11,13,0.8)', a: r(0.3) });
 }
 
 // ───────────── master timeline ─────────────
 function drawFrame(t) {
   T_NOW = t;
   const c = L.c, e = L.e;
-  const pS = T.range - 0.2, pE = T.range + 0.08;                    // push: hero → road
+  const pS = T.range - 0.2, pE = T.range + 0.08;
   const cS = T.cap - 0.02, eS = T.end - 0.02;
-  if (t < pS) { sceneIntro(t); hud(t); return; }
+  if (t < pS) { sceneIntro(t); HUD_INK = '10,11,13'; hud(t); return; }
   if (t < pE) {
     const p = E.inOutQuint(inv(pS, pE, t));
     L.save(); L.translate(-p * W * 0.6, 0); sceneIntro(t); L.restore();
     L.save(); L.clipRect(W * (1 - p), 0, W * p + 2, H); L.translate(W * (1 - p) * 0.5, 0); sceneRange(t); L.restore();
     c.fillStyle = '#fff'; c.fillRect(W * (1 - p) - 1.5, 0, 3, H); e.fillStyle = C.teal; e.fillRect(W * (1 - p) - 8, 0, 16, H);
-    hud(t); return;
+    HUD_INK = p < 0.5 ? '10,11,13' : '255,255,255'; hud(t); return;
   }
   if (t < T.space) {
-    if (t > T.space - 0.12) {                                        // zoom-through to black
-      const p = inv(T.space - 0.12, T.space, t);
-      sceneRange(t); c.fillStyle = `rgba(7,8,10,${E.inQuad(p)})`; c.fillRect(0, 0, W, H); hud(t); return;
-    }
-    sceneRange(t); hud(t); return;
+    sceneRange(t);
+    if (t > T.space - 0.12) { const p = inv(T.space - 0.12, T.space, t); c.fillStyle = `rgba(7,8,10,${E.inQuad(p)})`; c.fillRect(0, 0, W, H); }
+    HUD_INK = '255,255,255'; hud(t); return;
   }
-  if (t < cS) { sceneSpace(t); hud(t); return; }
-  if (t < T.mont) { sceneCap(t); hud(t); return; }
-  if (t < T.build) { sceneMont(t); hud(t); return; }
-  if (t < eS) { sceneBuild(t); hud(t); return; }
+  if (t < cS) { sceneSpace(t); HUD_INK = '255,255,255'; hud(t); return; }
+  if (t < T.mont) { sceneCap(t); HUD_INK = '255,255,255'; hud(t); return; }
+  if (t < T.build) { sceneMont(t); HUD_INK = '255,255,255'; hud(t); return; }
+  if (t < eS) { sceneBuild(t); HUD_INK = '255,255,255'; hud(t); return; }
   sceneEnd(t);
 }
 
 function fxAt(t) {
   const hit = (t0, k = 10) => t >= t0 ? Math.exp(-(t - t0) * k) : 0;
-  const ca = 0.0008 + 0.005 * hit(T.drop, 8) + 0.004 * hit(T.space, 9) + 0.005 * hit(T.cap, 9) + 0.004 * hit(T.mont, 9) + 0.006 * hit(T.end, 7);
-  const flash = 0.28 * hit(T.drop, 14) + 0.2 * hit(T.cap, 16) + 0.55 * hit(T.end, 9) + 0.12 * hit(T.space, 16);
-  return { ca, flash, vig: 0.38, grain: 0.03, bloom: 1.0 };
+  const ca = 0.0008 + 0.005 * hit(T.drop, 8) + 0.004 * hit(T.space, 9) + 0.005 * hit(T.cap, 9) + 0.004 * hit(T.mont, 9) + 0.005 * hit(T.end, 7);
+  const flash = 0.3 * hit(T.drop, 14) + 0.2 * hit(T.cap, 16) + 0.75 * hit(T.end, 8) + 0.12 * hit(T.space, 16);
+  const light = t >= T.end;
+  return { ca, flash, vig: light ? 0.12 : 0.36, grain: light ? 0.018 : 0.03, bloom: light ? 0.5 : 1.0 };
 }
 function samplesAt(t) {
   const within = (a, b) => t >= a && t <= b;
   if (within(T.range - 0.25, T.range + 0.15) || within(T.drop - 0.1, T.space + 0.1) || within(T.mont, T.build)) return 10;
-  if (within(T.photoIn - 0.1, T.photoIn + 0.6) || within(T.end - 0.1, T.end + 0.3)) return 9;
+  if (within(T.photoIn - 0.1, T.photoIn + 0.75) || within(T.end - 0.1, T.end + 0.4)) return 9;
   return 6;
 }
