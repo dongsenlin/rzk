@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Xiaomi SkyNomad N90 Max</title>
+<link rel="stylesheet" href="../assets/misans/Normal/MiSansVF.min.css">
+<link rel="stylesheet" href="../assets/misans/Normal/MiSans-Heavy.min.css">
+<link rel="stylesheet" href="../assets/misans/Latin/MiSansLatinVF.min.css">
+<link rel="stylesheet" href="../assets/misans/Latin/MiSansLatin-Heavy.min.css">
+<style>
+  @font-face { font-family: NotoSC; src: url(../assets/fonts/NotoSansSC[wght].ttf); font-weight: 100 900; }
+  html, body { margin: 0; background: #000; overflow: hidden; }
+  canvas#out { display: block; width: 100vw; height: auto; max-height: 100vh; object-fit: contain; }
+  #ui { position: fixed; left: 0; right: 0; bottom: 0; display: none; gap: 8px; padding: 8px; background: rgba(0,0,0,.6); color: #fff; font: 12px monospace; align-items: center; }
+  #ui input { flex: 1; }
+</style>
+</head>
+<body>
+<canvas id="out"></canvas>
+<div id="ui"><button id="play">play</button><input id="scrub" type="range" min="0" max="449" value="0"><span id="tc"></span></div>
+<script src="engine.js"></script>
+<script src="scenes.js"></script>
+<script>
+  window.READY = (async () => {
+    // every glyph the film uses, so all unicode-range subsets of MiSans are loaded before frame 0
+    const text = (window.ALL_TEXT || '') + '0123456789 kmKMLmsAaBbCcDdEeFfGgHhIiJjLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz·—+/%.,:';
+    const faces = [];
+    for (const w of [200, 300, 400, 500, 600, 700]) faces.push(`${w} 40px "MiSans VF"`, `${w} 40px "MiSansLatin VF"`);
+    faces.push('900 40px "MiSans"', '900 40px "MiSansLatin"');
+    await Promise.all(faces.map(f => document.fonts.load(f, text)));
+    await document.fonts.ready;
+    window.PH = {};
+    try {
+      const r = await fetch('../photos/photos.json');
+      if (r.ok) {
+        const map = await r.json();
+        await Promise.all(Object.entries(map).map(async ([slot, v]) => {
+          const file = typeof v === 'string' ? v : v.file;
+          const img = new Image(); img.src = '../photos/' + file;
+          try { await img.decode(); img.meta = typeof v === 'string' ? {} : v; window.PH[slot] = img; } catch (e) { console.warn('photo missing: ' + file); }
+        }));
+      }
+    } catch (e) {}
+    return true;
+  })();
+  if (new URLSearchParams(location.search).has('preview')) {
+    READY.then(() => {
+      const ui = document.getElementById('ui'); ui.style.display = 'flex';
+      const scrub = document.getElementById('scrub'), tc = document.getElementById('tc');
+      let playing = false, t0 = 0, f0 = 0;
+      const show = f => { renderFrame(f, 1); scrub.value = f; tc.textContent = (f / FPS).toFixed(2) + 's'; };
+      scrub.oninput = () => { playing = false; show(+scrub.value); };
+      document.getElementById('play').onclick = () => { playing = !playing; t0 = performance.now(); f0 = +scrub.value; };
+      (function loop() { if (playing) show(Math.floor(f0 + (performance.now() - t0) / 1000 * FPS) % NFRAMES); requestAnimationFrame(loop); })();
+      show(0);
+    });
+  }
+</script>
+</body>
+</html>

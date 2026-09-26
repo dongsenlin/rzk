@@ -1,0 +1,17 @@
+{
+  "bpm": 128,
+  "duration": 15.0,
+  "fps": 30,
+  "voice": {
+    "language": "cmn-CN",
+    "gemini": { "model": "gemini-3.8-flash-tts", "voice_name": "Puck", "alternatives": ["Achird", "Sadachbia", "Aoede (female)"] }
+  },
+  "lines": [
+    { "id": "vo1", "text": "把家，带去远方。", "anchor_char": 0, "anchor_time": 0.50 },
+    { "id": "vo2", "text": "一千七百零五公里，说走就走。", "anchor_char": 0, "anchor_time": 2.05 },
+    { "id": "vo3", "text": "大七座，十一种空间，随心而变。", "anchor_char": 0, "anchor_time": 4.75 },
+    { "id": "vo4", "text": "四驱越野，无惧山海。", "anchor_char": 0, "anchor_time": 7.62 },
+    { "id": "vo5", "text": "小米澎程", "anchor_char": 0, "anchor_time": 11.55 },
+    { "id": "vo6", "text": "澎湃每一程。", "anchor_char": 0, "anchor_time": 13.20 }
+  ]
+}

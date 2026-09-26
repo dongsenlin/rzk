@@ -129,7 +129,7 @@ async function full() {
   console.log('video →', out);
   const wav = path.join(BUILD, 'audio.wav');
   if (fs.existsSync(wav) && !opt('noaudio', null)) {
-    const fin = path.join(ROOT, 'out', 'tesla_careers_reel_15s.mp4');
+    const fin = path.join(ROOT, 'out', (process.env.REEL_NAME || path.basename(ROOT)) + '_master.mp4');
     fs.mkdirSync(path.dirname(fin), { recursive: true });
     execFileSync(FFMPEG, ['-y', '-loglevel', 'error', '-i', out, '-i', wav, '-map', '0:v', '-map', '1:a', '-c:v', 'copy',
       '-c:a', 'aac', '-b:a', '320k', '-ar', '48000', '-shortest', '-movflags', '+faststart', fin]);
