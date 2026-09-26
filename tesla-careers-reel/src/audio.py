@@ -500,9 +500,11 @@ def compress(x, thresh_db, ratio, att, rel, makeup_db=0):
 
 # ───────────────────────── loudness (ITU-R BS.1770) ─────────────────────────
 def k_weight(x):
-    b1, a1 = shelf(1681.97, 4.0, 1.0)
-    x = signal.lfilter(b1, a1, x, axis=0)
-    return signal.sosfilt(sos('highpass', 38.1, 2), x, axis=0)
+    # BS.1770-4 pre-filter (high shelf) and RLB high-pass, reference coefficients at 48 kHz.
+    # (A Butterworth high-pass here reads bass-heavy mixes ~1.5 LU hot.)
+    assert SR == 48000
+    x = signal.lfilter([1.53512485958697, -2.69169618940638, 1.19839281085285], [1, -1.69065929318241, 0.73248077421585], x, axis=0)
+    return signal.lfilter([1.0, -2.0, 1.0], [1, -1.99004745483398, 0.99007225036621], x, axis=0)
 
 
 def lufs(x):

@@ -12,7 +12,7 @@
     "gemini": {
       "model": "gemini-3.8-flash-tts",
       "voice_name": "Leda",
-      "note": "takes in vo_takes/gemini/*.wav; vo4 currently from gemini-3.1-flash-tts-preview (3.8 daily quota was used up)"
+      "note": "takes in vo_takes/gemini/*.wav; every line is gemini-3.8-flash-tts (Leda), vo4 regenerated after the daily quota reset"
     }
   },
   "lines": [
