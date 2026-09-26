@@ -3,6 +3,7 @@
     python src/make.py                    # offline voice (or Gemini automatically if GEMINI_API_KEY is set)
     python src/make.py --fetch            # first download the real tesla.cn imagery (local machine only)
     python src/make.py --gemini --model gemini-2.5-flash-preview-tts --voice Leda
+    python src/make.py --takes            # rebuild with the committed Gemini 3.8 Flash TTS takes (no API calls)
     python src/make.py --preview          # quick half-resolution check
 
 Steps: [fetch_site.js] → vo_gemini.py | vo_offline.py → vo_align.py → audio.py → render.js → delivery encode.
@@ -33,6 +34,7 @@ def main():
     ap.add_argument('--gemini', action='store_true', help='force Gemini TTS')
     ap.add_argument('--offline', action='store_true', help='force the offline Kokoro voice')
     ap.add_argument('--skip-vo', action='store_true', help='reuse build/vo as it is')
+    ap.add_argument('--takes', action='store_true', help='use the committed Gemini takes in vo_takes/gemini (no API calls)')
     ap.add_argument('--model'); ap.add_argument('--voice')
     ap.add_argument('--workers', default=str(max(1, min(8, (os.cpu_count() or 4)))))
     ap.add_argument('--preview', action='store_true')
@@ -40,7 +42,12 @@ def main():
 
     if a.fetch:
         run(['node', 'src/fetch_site.js'])
-    if not a.skip_vo:
+    if a.takes:
+        raw = os.path.join(ROOT, 'build', 'vo', 'raw'); os.makedirs(raw, exist_ok=True)
+        for f in os.listdir(os.path.join(ROOT, 'vo_takes', 'gemini')):
+            shutil.copy(os.path.join(ROOT, 'vo_takes', 'gemini', f), os.path.join(raw, f))
+        run([PY, 'src/vo_align.py'])
+    elif not a.skip_vo:
         use_gemini = a.gemini or (not a.offline and (os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')))
         if use_gemini:
             cmd = [PY, 'src/vo_gemini.py']
