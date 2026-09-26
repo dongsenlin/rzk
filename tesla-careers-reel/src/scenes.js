@@ -29,6 +29,22 @@ const VOT = (() => {
 })();
 const vo = (id, i) => { const a = VOT[id]; return a[Math.min(i, a.length - 1)]; };
 
+// ───────────── optional real photography (see src/fetch_site.js) ─────────────
+const ph = k => (window.PH || {})[k];
+const people = () => [1, 2, 3, 4, 5, 6, 7, 8].map(i => ph('people' + i)).filter(Boolean);
+function drawCover(c, img, x, y, w, h, o = {}) {
+  const { zoom = 1, fx = 0.5, fy = 0.5, dx = 0, dy = 0 } = o;
+  const s = Math.max(w / img.naturalWidth, h / img.naturalHeight) * zoom;
+  const iw = img.naturalWidth * s, ih = img.naturalHeight * s;
+  c.drawImage(img, x + (w - iw) * fx + dx, y + (h - ih) * fy + dy, iw, ih);
+}
+function rrPoly(x, y, w, h, r, start = 'bl') {      // rounded-rect outline as points, starting bottom-left, clockwise
+  const pts = [], arc = (cx, cy, a0) => { for (let i = 0; i <= 8; i++) { const a = a0 + i / 8 * Math.PI / 2; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } };
+  arc(x + r, y + h - r, Math.PI / 2); arc(x + r, y + r, Math.PI); arc(x + w - r, y + r, -Math.PI / 2); arc(x + w - r, y + h - r, 0);
+  pts.push(pts[0].slice());
+  return pts;
+}
+
 // ───────────── shared pieces ─────────────
 function tc(t) {
   const f = Math.floor(t * FPS + 1e-6), s = Math.floor(f / FPS), ff = f % FPS;
@@ -512,6 +528,24 @@ function sceneLineCar(t) {
   }
   L.restore();
 
+  // real Model Y photograph wipes in behind the launch (if provided)
+  const car = ph('car');
+  if (car && t >= T.drop) {
+    const u = t - T.drop, wp = E.inOutCubic(inv(0, 0.34, u)), xw = wp * (W + 40);
+    c.save(); c.beginPath(); c.rect(0, 0, xw, H); c.clip();
+    drawCover(c, car, 0, 0, W, H, { zoom: 1.16 - 0.1 * E.outQuad(inv(0, 1.6, u)), dx: 40 - 70 * u });
+    const g = c.createLinearGradient(0, 0, W * 0.62, 0); g.addColorStop(0, 'rgba(8,10,14,0.7)'); g.addColorStop(1, 'rgba(8,10,14,0)');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    for (let i = 0; i < 14; i++) {
+      const y = 120 + hash(i * 3.3) * 840, len = 120 + hash(i * 7.1) * 380, v = 3000 + hash(i * 1.7) * 3500;
+      const x = W + 200 - (u * v + hash(i * 9.1) * (W + 600)) % (W + 700);
+      c.strokeStyle = `rgba(255,255,255,${0.08 + 0.12 * hash(i)})`; c.lineWidth = 1; c.beginPath(); c.moveTo(x, y); c.lineTo(x + len, y); c.stroke();
+    }
+    c.restore();
+    e.save(); e.fillStyle = '#000'; e.fillRect(0, 0, xw, H); e.restore();
+    if (wp > 0 && wp < 1) { c.fillStyle = '#fff'; c.fillRect(xw - 1.5, 0, 3, H); e.fillStyle = C.blueHi; e.fillRect(xw - 10, 0, 20, H); }
+  }
+
   // chapter 01 title (not affected by shake)
   chapterTitle(t, T.drop, 'vo2a', '01', '可持续交通', 'SUSTAINABLE TRANSPORT', { y: 300 });
 }
@@ -559,9 +593,55 @@ function drawMegapack(c, e, m, k, charge) {
 }
 function isoLine(c, pts) { c.beginPath(); const a = iso(pts[0][0], pts[0][1]); c.moveTo(a[0], a[1]); for (const p of pts.slice(1)) { const q = iso(p[0], p[1]); c.lineTo(q[0], q[1]); } }
 
+function energyCard(t, img) {
+  const c = L.c, e = L.e, u = t - T.energy;
+  const x0 = 900, y0 = 150, w = 940, h = 780, r = 12;
+  // the blue line runs in from the bottom-left and wraps the card
+  const path = new Poly([[-40, 1010], [x0 - 60, y0 + h + 60], ...rrPoly(x0, y0, w, h, r)]);
+  const pl = ease(T.energy - 0.02, T.energy + 0.55, t, E.inOutCubic);
+  const rev = E.glide(inv(T.energy + 0.12, T.energy + 0.6, t));
+  if (rev > 0) {
+    c.save(); c.beginPath(); c.rect(x0, y0 + h * (1 - rev), w, h * rev); c.clip();
+    c.beginPath(); rrect(c, x0, y0, w, h, r); c.clip();
+    drawCover(c, img, x0, y0, w, h, { zoom: 1.12 - 0.08 * E.outQuad(inv(0, 1.5, u)) });
+    const g = c.createLinearGradient(0, y0, 0, y0 + 220); g.addColorStop(0, 'rgba(0,0,0,0.45)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g; c.fillRect(x0, y0, w, 220);
+    const g2 = c.createLinearGradient(0, y0 + h - 160, 0, y0 + h); g2.addColorStop(0, 'rgba(0,0,0,0)'); g2.addColorStop(1, 'rgba(0,0,0,0.5)');
+    c.fillStyle = g2; c.fillRect(x0, y0 + h - 160, w, 160);
+    // category-card caption, as on tesla.cn
+    const cp = ease(T.energy + 0.4, T.energy + 0.8, t);
+    c.globalAlpha = cp;
+    setFont(c, 600, 30, FONT.en, 1); c.fillStyle = '#fff'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+    c.fillText(scramble('Megapack', inv(0, 1, cp), false, 3), x0 + 40, y0 + 70);
+    setFont(c, 400, 19, FONT.zh, 2); c.fillStyle = 'rgba(255,255,255,0.88)';
+    c.fillText('储能超级工厂 · 上海', x0 + 40, y0 + 104);
+    // charge bar
+    const ch = E.outCubic(inv(T.energy + 0.5, T.energy + 1.15, t));
+    c.globalAlpha = 1;
+    c.fillStyle = 'rgba(255,255,255,0.3)'; c.fillRect(x0 + 40, y0 + h - 52, w - 190, 4);
+    c.fillStyle = '#fff'; c.fillRect(x0 + 40, y0 + h - 52, (w - 190) * ch, 4);
+    setFont(c, 600, 16, FONT.mono, 2); c.textAlign = 'right'; c.fillText(`${Math.round(ch * 100)}%`, x0 + w - 40, y0 + h - 44);
+    c.restore();
+    e.save(); e.fillStyle = '#6E91F2'; e.globalAlpha = 0.9; e.fillRect(x0 + 40, y0 + h - 56, (w - 190) * ch, 12); e.restore();
+  }
+  c.save(); c.strokeStyle = C.blue; c.lineWidth = 3; c.lineJoin = 'round'; c.beginPath(); path.trace(c, 0, pl); c.stroke(); c.restore();
+  e.save(); e.strokeStyle = C.blue; e.lineWidth = 8; e.beginPath(); path.trace(e, 0, pl); e.stroke(); e.restore();
+  if (pl > 0 && pl < 1) { const p = path.at(path.L * pl); e.save(); e.fillStyle = '#DDE6FF'; e.beginPath(); e.arc(p[0], p[1], 12, 0, TAU); e.fill(); e.restore(); }
+}
 function sceneEnergy(t) {
   L.bg(C.white);
   const c = L.c, e = L.e, u = t - T.energy;
+  const img = ph('energy');
+  if (img) {
+    L.save(); L.translate(1000, 540); L.scale(1 + 0.03 * E.outQuad(inv(-0.2, 1.5, u))); L.translate(-1000, -540);
+    c.save(); c.strokeStyle = '#F0F2F5'; c.lineWidth = 1; c.beginPath();
+    for (let k = -24; k <= 30; k++) { const a = iso(k, -20), b = iso(k, 30); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); const d = iso(-20, k), f = iso(30, k); c.moveTo(d[0], d[1]); c.lineTo(f[0], f[1]); }
+    c.stroke(); c.restore();
+    energyCard(t, img);
+    L.restore();
+    chapterTitle(t, T.energy, 'vo2b', '02', '可再生能源', 'RENEWABLE ENERGY', { y: 300, ink: C.ink, sub: C.pewter, accent: C.blue });
+    return;
+  }
   L.save();
   const push = 1 + 0.05 * E.outQuad(inv(-0.2, 1.5, u));
   L.translate(1000, 540); L.scale(push); L.translate(-1000 - 30 * u, -540);
@@ -831,8 +911,8 @@ function drawRobot(t, u) {
   }
   // arms (viewer-left arm waves)
   if (arms.a > 0) {
-    const raise = E.inOutCubic(inv(0.62, 0.92, u));
-    const wave = 0.34 * Math.sin((u - 0.92) * TAU * 2.3) * env(u, 0.9, 1.0, 1.6, 1.8);
+    const raise = ph('robot') ? 0 : E.inOutCubic(inv(0.62, 0.92, u));
+    const wave = ph('robot') ? 0 : 0.34 * Math.sin((u - 0.92) * TAU * 2.3) * env(u, 0.9, 1.0, 1.6, 1.8);
     for (const s of [-1, 1]) {
       c.save(); c.translate(s * 116 + s * 220 * (1 - spring(u - 0.034, 3.3, 0.55)), -552);
       const th = s < 0 ? lerp(0.07, 2.35, raise) : -0.07, te = s < 0 ? lerp(0.05, 0.72, raise) + wave : -0.05;
@@ -857,6 +937,7 @@ function drawRobot(t, u) {
     c.restore();
   }
   c.restore();
+  if (ph('robot')) return;
   // callouts
   const calls = [[0.52, 40, -648, -660, '视觉 · VISION'], [0.64, 136, -290, -300, '灵巧手 · DEXTEROUS HANDS'], [0.76, 70, -200, -170, '执行器 · ACTUATORS']];
   for (const [d, px, py, ly, lab] of calls) {
@@ -879,6 +960,23 @@ function sceneRobot(t) {
   c.strokeStyle = 'rgba(23,26,32,0.06)'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, 905); c.lineTo(W, 905); c.stroke();
   L.save(); L.translate(960, 540); L.scale(1 + 0.03 * u); L.translate(-960, -540);
   drawRobot(t, u);
+  const img = ph('robot');
+  if (img) {
+    const x0 = 860, y0 = 140, w = 980, h = 800, r = 12;
+    const sp = E.inOutCubic(inv(0.42, 0.78, u)), sy = y0 + h * sp;
+    if (sp > 0) {
+      c.save(); c.beginPath(); c.rect(x0, y0, w, sy - y0); c.clip(); c.beginPath(); rrect(c, x0, y0, w, h, r); c.clip();
+      drawCover(c, img, x0, y0, w, h, { zoom: 1.1 - 0.06 * E.outQuad(inv(0.4, 1.4, u)) });
+      c.restore();
+      L.e.save(); L.e.fillStyle = '#000'; L.e.fillRect(x0, y0, w, sy - y0); L.e.restore();
+      if (sp < 1) {
+        const g = c.createLinearGradient(0, sy - 70, 0, sy); g.addColorStop(0, 'rgba(62,106,225,0)'); g.addColorStop(1, 'rgba(62,106,225,0.35)');
+        c.fillStyle = g; c.fillRect(x0, sy - 70, w, 70);
+        c.fillStyle = '#FFFFFF'; c.fillRect(x0 - 40, sy - 1.5, w + 80, 3);
+        L.e.fillStyle = C.blue; L.e.fillRect(x0 - 40, sy - 8, w + 80, 16);
+      }
+    }
+  }
   L.restore();
   chapterTitle(t, T.robot, 'vo2d', '04', '机器人', 'ROBOTICS', { y: 300, ink: C.ink, sub: C.pewter, accent: C.blue });
 }
@@ -907,8 +1005,24 @@ function sceneRoles(t) {
   const c = L.c, e = L.e, u = t - T.roles;
   const rg = c.createRadialGradient(560, 520, 50, 560, 520, 1300); rg.addColorStop(0, '#4B78EC'); rg.addColorStop(1, '#335CCF');
   c.fillStyle = rg; c.fillRect(0, 0, W, H);
-  grid(c, { alpha: 0.9, offX: -u * 40, minor: 0.035, major: 0.06, cross: false });
   const pos = slotPos(t), idx = Math.min(ROLES.length - 1, Math.round(pos));
+  const pp = people();
+  if (pp.length) {                                        // blue duotone photo strip, scrolls with the slot
+    c.save();
+    c.filter = 'grayscale(1) contrast(1.15) brightness(1.05)';
+    for (let k = Math.floor(pos) - 1; k <= Math.floor(pos) + 1; k++) {
+      if (k < 0) continue;
+      drawCover(c, pp[k % pp.length], 0, (k - pos) * H, W, H, { zoom: 1.06 + 0.02 * Math.sin(k) });
+    }
+    c.filter = 'none';
+    c.globalCompositeOperation = 'multiply'; c.fillStyle = C.blue; c.fillRect(0, 0, W, H);
+    c.globalCompositeOperation = 'screen'; c.fillStyle = '#12245A'; c.fillRect(0, 0, W, H);
+    c.globalCompositeOperation = 'source-over';
+    const g = c.createLinearGradient(0, 0, W, 0); g.addColorStop(0, 'rgba(46,86,205,0.85)'); g.addColorStop(0.55, 'rgba(46,86,205,0.35)'); g.addColorStop(1, 'rgba(46,86,205,0.55)');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    c.restore();
+  }
+  grid(c, { alpha: 0.9, offX: -u * 40, minor: 0.035, major: 0.06, cross: false });
   // 下一个
   setFont(c, 700, TS, FONT.zh, 0); const wNext = c.measureText('下一个').width;
   c.save(); c.beginPath(); c.rect(TX - 20, TY - TS, 1200, TS * 1.3); c.clip();

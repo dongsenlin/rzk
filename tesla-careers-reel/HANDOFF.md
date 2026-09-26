@@ -68,6 +68,21 @@ HUD in the corners (特斯拉 · 工作机会 / 上海 coordinates / chapter / t
 - Playwright: `PLAYWRIGHT=/opt/node22/lib/node_modules/playwright node src/render.js ...`
 - tesla.cn, Hugging Face, jsdelivr are blocked; GitHub releases, raw.githubusercontent, PyPI, npm, Google Fonts work.
 
+## 用户的最新要求（2026-09-26）
+1. 画面素材尽量用 tesla.cn 官网的真实图片。云端沙箱访问不了 tesla.cn，所以在本地运行 `node src/fetch_site.js`
+   （被拦截时加 `--headed`）：会下载招聘/Model Y/Megapack/机器人等页面的大图到 assets/photos/raw/，
+   生成总览 contact.png，并自动猜测 photos.json（图片位 → 文件）。打开 contact.png 挑图、改 photos.json 后重新渲染。
+   已实现的图片位：car（起步后光线扫入 Model Y 实拍）、energy（Megapack 卡片 + 蓝线环绕 + 充电条）、
+   robot（线稿机器人被扫描线显影成实拍）、people1…people8（职位老虎机背后蓝色调照片快切）。缺图时自动回退矢量画面。
+   已用占位图验证过这几条代码路径（占位图在 assets/photos/test/，映射文件已改名为 photos.test.json）。
+2. 配音要 Gemini TTS 的自然语气：本地设置 GEMINI_API_KEY 后 `python src/make.py --gemini`（可加 `--model 模型名 --voice Leda`）。
+   vo_align.py 会用语音识别检查读错字，并把每句重新对齐到画面。
+3. 参考风格：https://x.com/YoheiN2023/status/2103590367518171295 —— 云端打不开 x.com，内容未知；
+   请让用户提供截图或文字描述后再调整风格。
+
+## 一键生成
+`python src/make.py`（加 `--fetch` 先抓官网图；`--preview` 半分辨率快速检查）→ out/tesla_careers_reel_15s_final.mp4
+
 ## 本地运行（Windows / macOS / Linux）
 1. 获取代码（三选一）
    - 已有仓库：`git fetch origin` → `git checkout claude/youthful-albattani-tc2nsl`

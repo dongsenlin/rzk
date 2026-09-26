@@ -26,6 +26,18 @@
     for (const w of [300, 400, 500, 600, 700, 800]) faces.push(`${w} 40px NotoSC`, `${w} 40px Manrope`, `${w} 40px GeistMono`);
     await Promise.all(faces.map(f => document.fonts.load(f, zh + 'ABCabc0123')));
     await document.fonts.ready;
+    // optional real photography (assets/photos/photos.json: slot → file), see src/fetch_site.js
+    window.PH = {};
+    try {
+      const r = await fetch('../assets/photos/photos.json');
+      if (r.ok) {
+        const map = await r.json();
+        await Promise.all(Object.entries(map).map(async ([slot, file]) => {
+          const img = new Image(); img.src = '../assets/photos/' + file;
+          try { await img.decode(); window.PH[slot] = img; } catch (e) { console.warn('photo missing: ' + file); }
+        }));
+      }
+    } catch (e) { /* no photos: vector-only version */ }
     return true;
   })();
   if (new URLSearchParams(location.search).has('preview')) {
