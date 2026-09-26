@@ -282,6 +282,16 @@ def limiter(x, ceiling=0.89, look=0.003, rel=0.08):         # true-peak aware: p
     return x * np.minimum(g, minimum_filter1d(need, size=2 * n + 1))[:, None]
 
 
+def lossy(mix, ceiling_db=-2.8):
+    """The same mix for AAC delivery: −14 LUFS with the true peak held lower, since the codec's overshoot is ~1.5 dB."""
+    x = filt(mix, 'lowpass', 15000, 4)                  # the codec drops this band anyway; its own cut on sharp transients is what overshoots
+    for _ in range(4):
+        x *= 10 ** ((-14.0 - lufs(x)) / 20)
+        x = limiter(x, 10 ** (ceiling_db / 20))
+    sf.write(os.path.join(ROOT, 'build', 'audio_lossy.wav'), x, SR, subtype='PCM_24')
+    print(f'lossy → build/audio_lossy.wav  {lufs(x):.1f} LUFS, true peak {20 * np.log10(true_peak(x)):.1f} dBTP')
+
+
 # ───────────── the mix ─────────────
 def main():
     vo, mus, sco, fx = Bus(), Bus(), Bus(), Bus()
@@ -444,9 +454,12 @@ def main():
     if tp > -1.0: mix *= 10 ** ((-1.0 - tp) / 20)
     os.makedirs(os.path.join(ROOT, 'build'), exist_ok=True)
     sf.write(os.path.join(ROOT, 'build', 'audio.wav'), mix, SR, subtype='PCM_24')
+    lossy(mix)
     a, b = int(SONG_AT * SR), int((SONG_AT + SONG) * SR)
     print(f'audio → build/audio.wav  {len(mix) / SR:.2f}s  integrated {lufs(mix):.1f} LUFS  (narration part {lufs(mix[:a]):.1f}, song {lufs(mix[a:b]):.1f}, epilogue {lufs(mix[b:]):.1f})  true peak {20 * np.log10(true_peak(mix)):.1f} dBTP')
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+    if '--lossy' in sys.argv: lossy(sf.read(os.path.join(ROOT, 'build', 'audio.wav'))[0])   # only redo the delivery copy
+    else: main()
